@@ -1,0 +1,2070 @@
+# TiryakiPiyasaFatihi V1.6 - 66 Modül Prompt’ları
+
+## Prompt 1/66: piyasa_veri_cekici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 1. piyasa_veri_cekici.py  
+**Dosya Yolu**: temel_islemler/piyasa_veri_cekici.py  
+**Görev**: Binance’ten fiyat ve hacim, Etherscan’dan zincir üstü veriler çeker. X, Telegram, haber siteleri (CoinDesk, CoinTelegraph), TradingView ve Crypto Bubbles’dan scraping ile veri toplar. Yerel token/cüzdan veritabanından (hafiza_merkezi) veri alır.  
+**Sınıf**: PiyasaVeriCekici  
+**Fonksiyonlar**:  
+- `veri_cek_binance() -> pd.DataFrame`: Binance’ten fiyat ve hacim çeker.  
+- `veri_cek_etherscan() -> pd.DataFrame`: Etherscan’dan zincir üstü veriler çeker.  
+- `scrape_veri(kaynak: str) -> pd.DataFrame`: X, Telegram, haber siteleri, TradingView veya Crypto Bubbles’dan veri toplar.  
+- `cek_yerel_veri(veri_tipi: str) -> pd.DataFrame`: hafiza_merkezi’nden token/cüzdan verileri çeker.  
+
+**Bağlı Modüller**:  
+- veri_duzenleyici, hafiza_merkezi, piyasa_tarama, likidite_analizci, balina_izleyici, dex_arbitraj_tarayici, hukuk_gunlugu, veri_kalite_kontrol, kaynak_guvenilirlik_izleyici, crypto_bubbles_tarama, bundle_analizci, llm_sentiment_analizci, zincirler_arasi_hareket_analizci, makro_korelasyon_analizci, cuzdan_kumesi_analizci: Veri gönderir/ alır.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: python-binance>=1.0.19, ccxt>=4.2.0, requests>=2.31.0, beautifulsoup4>=4.12.0, selenium>=4.18.0, web3.py>=6.15.0, numpy>=1.26.0, pandas>=2.2.0, python-dotenv>=1.0.0  
+**Test**:  
+- BTC/USDT için fiyat, hacim, zincir üstü veri, X/Telegram sentiment verisi, TradingView makro verileri ve Crypto Bubbles verisi 10ms içinde çekilir, Pandas DataFrame döner.  
+- Scraping performansı test edilir (her kaynak için <1s).  
+- Yavaş API’lar için önbellek (hafiza_merkezi) kullanılır.  
+- API kesintilerinde yedek_kurtarma.gec_yedek_kaynak tetiklenir.  
+
+**Talimat**:  
+- PiyasaVeriCekici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `veri_cek_binance`, Binance’ten fiyat ve hacim çekmeli (ccxt/python-binance).  
+  - `veri_cek_etherscan`, Etherscan’dan zincir üstü veriler çekmeli (web3.py).  
+  - `scrape_veri`, BeautifulSoup/Selenium ile X, Telegram, CoinDesk/CoinTelegraph, TradingView veya Crypto Bubbles’dan veri toplamalı.  
+  - `cek_yerel_veri`, hafiza_merkezi’nden token/cüzdan verilerini çekmeli.  
+- API anahtarlarını .env’den python-dotenv ile çekin, haftalık rotasyon loglarını hukuk_gunlugu.logla_yasal_veri ile kaydedin.  
+- Yavaş API’lar ve scraping için önbellek (hafiza_merkezi) kullanın, kesintilerde yedek_kurtarma.gec_yedek_kaynak’ı tetikleyin.  
+- Verileri veri_yapilari JSON şemasına uygun formatta yayınlayın, Redis event bus üzerinden bağlı modüllere iletin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 2/66: veri_duzenleyici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 2. veri_duzenleyici.py  
+**Dosya Yolu**: temel_islemler/veri_duzenleyici.py  
+**Görev**: Binance, Etherscan, scraping ve yerel veritabanından gelen verileri temizler ve normalize eder.  
+**Sınıf**: VeriDuzenleyici  
+**Fonksiyonlar**:  
+- `temizle_veri(veri: pd.DataFrame) -> pd.DataFrame`: Eksik ve hatalı verileri temizler (ortalama ile doldurma).  
+- `normalize_veri(veri: pd.DataFrame) -> pd.DataFrame`: Verileri 0-1 aralığına ölçeklendirir.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, piyasa_analizci, veri_kalite_kontrol, kaynak_guvenilirlik_izleyici, llm_sentiment_analizci, makro_korelasyon_analizci: Veri alır/gönderir.  
+- hafiza_merkezi: Temizlenmiş verileri kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0  
+**Test**: BTC/USDT verisi temizlenir, eksik değerler ortalama ile doldurulur, normalize edilmiş DataFrame döner, işlem <50ms.  
+
+**Talimat**:  
+- VeriDuzenleyici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `temizle_veri`, eksik verileri ortalama ile doldurmalı, aykırı değerleri z-skor ile filtrelemeli.  
+  - `normalize_veri`, min-max ölçeklendirme yapmalı.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış verilerini aynı şemaya uygun formatta yayınlayın.  
+- Temizlenmiş verileri hafiza_merkezi.kaydet_veri ile sıkıştırarak (zlib) kaydedin, Redis event bus üzerinden bağlı modüllere iletin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 3/66: piyasa_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 3. piyasa_analizci.py  
+**Dosya Yolu**: temel_islemler/piyasa_analizci.py  
+**Görev**: Teknik analiz yapar, piyasa anomalilerini tespit eder, kontraryen fırsatları analiz eder.  
+**Sınıf**: PiyasaAnalizci  
+**Fonksiyonlar**:  
+- `analiz_trend(veri: pd.DataFrame) -> dict`: Trend yönünü belirler (hareketli ortalamalar).  
+- `tespit_anomali(veri: pd.DataFrame) -> dict`: Anormal fiyat hareketlerini bulur (z-skor).  
+- `birleştir_paralel_analiz(veri: pd.DataFrame) -> dict`: Paralel analiz sonuçlarını birleştirir.  
+- `analiz_kontraryen_firsatlar(veri: pd.DataFrame) -> dict`: Kontraryen fırsatları tespit eder (FinBERT sentiment ve piyasa verileriyle).  
+
+**Bağlı Modüller**:  
+- veri_duzenleyici, karar_tartismasi, paralel_analizci, piyasa_rejim_analizci, mikro_yapi_analizci, veri_kalite_kontrol, teknik_analiz_motoru, volatilite_izleyici, llm_sentiment_analizci, bundle_analizci, piyasa_rejim_tahmincisi: Veri alır/gönderir.  
+- hafiza_merkezi: Analiz sonuçlarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scipy>=1.12.0  
+**Test**: BTC/USDT için yükselen trend tespit edilir, kontraryen short sinyali doğrulanır, doğruluk >%80, işlem <100ms.  
+
+**Talimat**:  
+- PiyasaAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `analiz_trend`, SMA/EMA ile trend yönünü belirlemeli.  
+  - `tespit_anomali`, z-skor ile anormal hareketleri bulmalı.  
+  - `birleştir_paralel_analiz`, paralel sonuçları ağırlıklı ortalama ile birleştirmeli.  
+  - `analiz_kontraryen_firsatlar`, FinBERT sentiment verileriyle kontraryen sinyaller üretmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini aynı şemaya uygun formatta Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 4/66: duyarlilik_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 4. duyarlilik_analizci.py  
+**Dosya Yolu**: temel_islemler/duyarlilik_analizci.py  
+**Görev**: X, Telegram, haber sitelerinden (CoinDesk, CoinTelegraph) scraping ile toplanan verileri FinBERT ile analiz eder, manipülasyonu ve sahte hesapları filtreler, makro verileri (TradingView/yerel CSV) değerlendirir.  
+**Sınıf**: DuyarlilikAnalizci  
+**Fonksiyonlar**:  
+- `cek_scrape_veri(kaynak: str) -> pd.DataFrame`: Scraping verilerini çeker.  
+- `analiz_sosyal_duyarlilik(veri: pd.DataFrame) -> dict`: FinBERT ile sosyal medya duyarlılığını analiz eder.  
+- `hesapla_guven_puani(veri: pd.DataFrame) -> dict`: Güvenilirlik puanı hesaplar (%40 yaş, %30 doğruluk, %30 etkileşim).  
+- `cek_makro_veri() -> pd.DataFrame`: TradingView’dan veya yerel CSV’den makro veriler çeker.  
+- `analiz_makro_etki(veri: pd.DataFrame) -> dict`: Makro verilerin etkisini analiz eder.  
+- `tespit_makro_volatilite(veri: pd.DataFrame) -> dict`: Volatilite patlamalarını tespit eder.  
+- `uretm_makro_strateji(veri: pd.DataFrame) -> dict`: Makro olaylar için strateji üretir.  
+- `analiz_topluluk_aktivitesi(proje: str, kaynaklar: list) -> dict`: Topluluk büyüklüğü ve aktivitelerini skorlar.  
+- `dogrula_sosyal_medya_hesabi(hesap: str, platform: str) -> dict`: X ve Telegram hesaplarının geçmişini FinBERT ile doğrular.  
+
+**Bağlı Modüller**:  
+- karar_tartismasi, hafiza_merkezi, kaynak_guvenilirlik_izleyici, piyasa_veri_cekici, llm_sentiment_analizci, crypto_bubbles_tarama, makro_korelasyon_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: requests>=2.31.0, transformers>=4.38.0, beautifulsoup4>=4.12.0, selenium>=4.18.0, pandas>=2.2.0, python-dotenv>=1.0.0  
+**Test**: Yeni X hesabının puanı %20 düşürülür, Fed faiz artırımı sonrası short sinyali doğrulanır (>%75 doğruluk), AGIX topluluk skoru hesaplanır, sahte X hesabı tespit edilir, işlem <500ms.  
+
+**Talimat**:  
+- DuyarlilikAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `cek_scrape_veri`, piyasa_veri_cekici.scrape_veri ile X, Telegram, haber verileri çekmeli.  
+  - `analiz_sosyal_duyarlilik`, FinBERT ile duyarlılık skoru hesaplamalı.  
+  - `hesapla_guven_puani`, kaynak yaşı, doğruluk ve etkileşim bazlı puanlamalı.  
+  - `uretm_makro_strateji`, makro olaylara göre AL/SAT/BEKLE önerileri üretmeli.  
+  - `dogrula_sosyal_medya_hesabi`, FinBERT ile hesap geçmişini kontrol etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 5/66: firsat_avcisi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 5. firsat_avcisi.py  
+**Dosya Yolu**: temel_islemler/firsat_avcisi.py  
+**Görev**: %15+ ani fiyat sıçramalarını, arbitraj fırsatlarını ve meme coin narrative fırsatlarını avlar (scraping ve yerel veritabanı ile).  
+**Sınıf**: FirsatAvcisi  
+**Fonksiyonlar**:  
+- `avla_flash_firsat(veri: pd.DataFrame) -> dict`: Ani fiyat hareketlerini yakalar.  
+- `avla_arbitraj_firsat(veri: pd.DataFrame) -> dict`: Arbitraj fırsatlarını bulur.  
+- `avla_meme_narrative_firsat(veri: pd.DataFrame) -> dict`: Meme coin narrative fırsatlarını tespit eder.  
+
+**Bağlı Modüller**:  
+- piyasa_analizci, islem_yapici, piyasa_tarama, likidite_analizci, balina_izleyici, dex_arbitraj_tarayici, teknik_analiz_motoru, volatilite_izleyici, crypto_bubbles_tarama, llm_sentiment_analizci, zincirler_arasi_hareket_analizci, tokenomik_analizci, cuzdan_kumesi_analizci: Veri alır/gönderir.  
+- hafiza_merkezi: Fırsatları kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0  
+**Test**: BTC/USDT için %15 pump veya %5 DEX arbitraj fırsatı tespit edilir, AGIX için narrative fırsatı bulunur, işlem <10ms.  
+
+**Talimat**:  
+- FirsatAvcisi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `avla_flash_firsat`, %15+ fiyat sıçramalarını hacim onayıyla tespit etmeli.  
+  - `avla_arbitraj_firsat`, fiyat farklarını dex_arbitraj_tarayici ile doğrulamalı.  
+  - `avla_meme_narrative_firsat`, topluluk skoru ve FinBERT sentiment analiziyle fırsatları bulmalı.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Tespit edilen fırsatları hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, bildirim_bot ile kullanıcıya bildirin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 6/66: keskin_nisanci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 6. keskin_nisanci.py  
+**Dosya Yolu**: temel_islemler/keskin_nisanci.py  
+**Görev**: SMC tabanlı en iyi giriş/çıkış anlarını bulur, sweep filtresi uygular, Elliot Wave sinyalleri üretir.  
+**Sınıf**: KeskinNisanci  
+**Fonksiyonlar**:  
+- `bul_giris_noktasi(veri: pd.DataFrame) -> dict`: SMC tabanlı giriş noktası bulur.  
+- `bul_cikis_noktasi(veri: pd.DataFrame) -> dict`: Çıkış noktası belirler.  
+- `yurut_scalping_strateji(veri: pd.DataFrame) -> dict`: Scalping işlemleri yürütür.  
+- `kontrol_sweep_gerekli(veri: pd.DataFrame) -> bool`: Sweep olmadan girişleri reddeder.  
+- `uret_elliot_dalga_sinyali(veri: pd.DataFrame, zigzag_donem: int) -> dict`: Elliot Wave üçüncü dalga sinyalleri üretir.  
+
+**Bağlı Modüller**:  
+- piyasa_analizci, islem_yapici, risk_denetleyicisi, teknik_analiz_motoru, volatilite_izleyici, volatilite_olasilik_modeli: Veri alır/gönderir.  
+- hafiza_merkezi: Giriş/çıkış noktalarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, pandas_ta>=0.3.14  
+**Test**: BTC/USDT için 0.705–0.79 fib bölgesinde “mükemmel giriş” tespit edilir, Solana 15 dakikalık grafikte üçüncü dalga sinyali üretilir, sweep olmadan giriş reddedilir, işlem <100ms.  
+
+**Talimat**:  
+- KeskinNisanci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `bul_giris_noktasi`, Fibonacci ve FVG ile SMC giriş noktaları bulmalı.  
+  - `kontrol_sweep_gerekli`, likidite süpürmesi doğrulamalı.  
+  - `uret_elliot_dalga_sinyali`, zigzag indikatörüyle üçüncü dalga sinyalleri üretmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Giriş/çıkış noktalarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 7/66: karar_tartismasi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 7. karar_tartismasi.py  
+**Dosya Yolu**: temel_islemler/karar_tartismasi.py  
+**Görev**: LLM’ler (GPT-4o, Claude, DeepSeek) strateji önerir, konsensüs üretir, fırsatları puanlar (stratejik kararlar için, HFT hariç).  
+**Sınıf**: KararTartismasi  
+**Fonksiyonlar**:  
+- `yurut_tartisma(veri: dict) -> dict`: LLM’ler arasında veri ön işleme, öneri üretimi, puanlama ve konsensüs adımlarıyla tartışma yürütür.  
+- `uygula_konsensus(tartisma_sonuc: dict) -> dict`: Konsensüs kararını uygular.  
+- `hesapla_firsat_puani(firsat: dict) -> float`: Fırsat güvenilirlik puanını hesaplar (ağırlıklı ortalama).  
+- `yurut_ekip_tartismasi(modeller: list, veri: dict) -> dict`: Birden fazla AI modeliyle konsensüs oluşturur.  
+
+**Bağlı Modüller**:  
+- piyasa_analizci, duyarlilik_analizci, islem_yapici, ek_ai_entegratoru, piyasa_rejim_analizci, dengeleyici, strateji_geri_test, balina_izleyici, performans_analizci, rakip_analizci, teknik_analiz_motoru, rapor_uretici, llm_sentiment_analizci, derin_ogrenme_botu, piyasa_rejim_tahmincisi, makro_korelasyon_analizci: Veri alır/gönderir.  
+- hafiza_merkezi: Tartışma sonuçlarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: openai>=1.10.0, anthropic>=0.8.0, numpy>=1.26.0, transformers>=4.38.0, python-dotenv>=1.0.0  
+**Test**: BTC/USDT için “temkinli al” kararı üretilir, %15 pump için 80/100 puan doğrulanır, DeepSeek/GPT-4o konsensüsü doğrulanır, işlem <500ms.  
+
+**Talimat**:  
+- KararTartismasi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `yurut_tartisma`, GPT-4o, Claude, DeepSeek’ten öneriler toplamalı, 500ms zaman aşımı uygulamalı.  
+  - `hesapla_firsat_puani`, model ağırlıklarını dengeleyici’den alarak puanlamalı.  
+  - `yurut_ekip_tartismasi`, birden fazla modelin önerilerini konsensüse çevirmeli.  
+- Giriş verilerini islem_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Tartışma sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın, kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 8/66: islem_yapici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 8. islem_yapici.py  
+**Dosya Yolu**: temel_islemler/islem_yapici.py  
+**Görev**: Emirleri yürütür, stop-loss ve pozisyon kapama uygular, moonbag ve DCA stratejilerini destekler.  
+**Sınıf**: IslemYapici  
+**Fonksiyonlar**:  
+- `yurut_alis_emri(emir: dict) -> dict`: Alış emri yürütür.  
+- `yurut_satis_emri(emir: dict) -> dict`: Satış emri yürütür.  
+- `kapat_pozisyon(pozisyon: dict) -> dict`: Pozisyonu kapatır.  
+- `uygula_moonbag_stratejisi(islem: dict, oran: float) -> dict`: Kârın %85’ini satıp %15’ini tutar.  
+- `uygula_dca_stratejisi(proje: str, destek_seviyesi: float, miktar: float) -> dict`: Destek seviyelerinde DCA alımı planlar.  
+
+**Bağlı Modüller**:  
+- karar_tartismasi, firsat_avcisi, keskin_nisanci, kasiyer, hft_yoneticisi, piyasa_rejim_analizci, likidite_analizci, hukuk_gunlugu, risk_simulasyon, maliyet_simulatoru, teknik_analiz_motoru, volatilite_izleyici, dashboard_duzenleyici: Veri alır/gönderir.  
+- hafiza_merkezi: İşlem loglarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: python-binance>=1.0.19, ccxt>=4.2.0, numba>=0.59.0  
+**Test**: BTC/USDT için AL emri 10ms içinde yürütülür, %85 moonbag satışı uygulanır, AGIX için DCA alımı planlanır, loglanır, işlem <10ms.  
+
+**Talimat**:  
+- IslemYapici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `yurut_alis_emri` ve `yurut_satis_emri`, Binance API ile emir yürütmeli.  
+  - `kapat_pozisyon`, açık pozisyonları kapatmalı.  
+  - `uygula_moonbag_stratejisi`, kârın %85’ini satmalı.  
+  - `uygula_dca_stratejisi`, destek seviyelerinde alımları planlamalı.  
+- Giriş emirlerini islem_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- İşlem loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, yasal uyumluluk için hukuk_gunlugu.logla_yasal_veri çağırın.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın, kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- GPU optimizasyonu için numba kullanın, Jetson’da performans testi yapın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 9/66: risk_denetleyicisi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 9. risk_denetleyicisi.py  
+**Dosya Yolu**: temel_islemler/risk_denetleyicisi.py  
+**Görev**: Risk değerlendirir, sermaye koruma kalkanı uygular, volatiliteye göre stop-loss ayarlar, kullanıcı tanımlı kuralları destekler.  
+**Sınıf**: RiskDenetleyicisi  
+**Fonksiyonlar**:  
+- `degerlendir_risk(portfoy: dict, islem: dict) -> dict`: Risk seviyesini değerlendirir (VaR).  
+- `ayarla_dinamik_stop(islem: dict) -> float`: Dinamik stop-loss belirler (ATR).  
+- `aktiflestir_sermaye_kalkani(portfoy: dict) -> bool`: Sermaye koruma kalkanını aktive eder.  
+- `ayarla_volatilite_stop(volatilite: float) -> float`: Volatiliteye göre stop mesafesini ayarlar (GARCH).  
+- `sinirla_kaldirac_orani(hesap: dict, max_kaldirac: float) -> None`: Maksimum 3x kaldıraç sınırı uygular.  
+- `kontrol_stop_emri(islem: dict) -> bool`: Stop-loss olmadan emirleri engeller.  
+- `engelle_intikam_ticareti(portfoy: dict, zarar_esik: float) -> bool`: Zarar sonrası aynı paritede işlem engeller.  
+- `ayarla_dinamik_kar_zarar(sinyal: dict, kar_orani: float, zarar_orani: float) -> dict`: Dinamik take-profit/stop-loss oranları ayarlar.  
+- `tanimla_ozel_emir_kurallari(kural: dict, kullanici: str) -> dict`: Kullanıcı tanımlı kuralları kaydeder.  
+- `optimize_risk_odul_orani(sinyal: dict, hedef_oran: float) -> dict`: Risk/ödül oranını optimize eder.  
+
+**Bağlı Modüller**:  
+- islem_yapici, kasiyer, hft_yoneticisi, piyasa_rejim_analizci, ogrenme_merkezi, risk_simulasyon, volatilite_izleyici, dashboard_duzenleyici, volatilite_olasilik_modeli: Veri alır/gönderir.  
+- hafiza_merkezi: Risk değerlendirmelerini kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scipy>=1.12.0  
+**Test**: %5 drawdown limitinde işlem hacmi %50 azalır, yüksek volatilite için stop mesafesi %5 genişler, 2:1 risk/ödül oranı ayarlanır, stopsuz emir reddedilir, işlem <100ms.  
+
+**Talimat**:  
+- RiskDenetleyicisi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `degerlendir_risk`, VaR ile risk hesaplamalı.  
+  - `ayarla_dinamik_stop`, ATR tabanlı stop-loss belirlemeli.  
+  - `aktiflestir_sermaye_kalkani`, drawdown limitlerine göre işlem hacmini azaltmalı.  
+  - `tanimla_ozel_emir_kurallari`, kullanıcı kurallarını kaydetmeli.  
+- Giriş verilerini islem_yapilari ve ayar_yapilari JSON şemalarına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Risk değerlendirmelerini hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 10/66: kasiyer.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 10. kasiyer.py  
+**Dosya Yolu**: temel_islemler/kasiyer.py  
+**Görev**: Portföy takibi yapar, sermayeyi üç cüzdana böler, yeniden dengeler, portföy tabanlı pozisyon büyüklüğü hesaplar.  
+**Sınıf**: Kasiyer, PortfoyDagiticisi  
+**Fonksiyonlar**:  
+- `izle_kar(islemler: pd.DataFrame) -> dict`: Kâr/zararı izler.  
+- `guncelle_portfoy(islem: dict) -> dict`: Portföyü günceller.  
+- `hesapla_performans_metrikleri(portfoy: dict) -> dict`: Performans metriklerini hesaplar.  
+- `dagit_sermaye(portfoy: dict) -> dict`: Sermayeyi cüzdanlara dağıtır.  
+- `yonet_cuzdan_stratejisi(portfoy: dict) -> dict`: Cüzdan stratejilerini yönetir.  
+- `yeniden_dengele_portfoy(portfoy: dict) -> dict`: Portföyü yeniden dengeler.  
+- `yonet_sermaye_akisi(portfoy: dict) -> dict`: Sermaye akışını optimize eder.  
+- `hesapla_islem_karzarar(islem: dict) -> float`: İşlem başına kâr/zarar hesaplar.  
+- `hesapla_risk_ayarli_getiri(portfoy: dict) -> float`: Risk-ayarlı getiriyi analiz eder.  
+- `hesapla_portfoy_bazli_pozisyon(portfoy: dict, risk_orani: float) -> float`: Pozisyon büyüklüğünü portföy değerine göre hesaplar.  
+
+**Bağlı Modüller**:  
+- islem_yapici, bildirim_bot, maliyet_simulatoru, risk_simulasyon, grafik_ui, rapor_uretici: Veri alır/gönderir.  
+- hafiza_merkezi: Portföy verilerini kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0  
+**Test**: Yüksek riskli cüzdan %50 kâr ettiğinde %20 sermaye aktarılır, %50 risk oranıyla pozisyon büyüklüğü hesaplanır, 10 işlemde 6 zarar eden strateji filtrelenir, işlem <200ms.  
+
+**Talimat**:  
+- Kasiyer ve PortfoyDagiticisi sınıflarını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `izle_kar`, kâr/zarar özetini hesaplamalı.  
+  - `yeniden_dengele_portfoy`, düşük/orta/yüksek risk cüzdanlarını dengelemeli.  
+  - `hesapla_risk_ayarli_getiri`, Sharpe oranı kullanmalı.  
+  - `hesapla_portfoy_bazli_pozisyon`, portföy değerine göre pozisyon büyüklüğü belirlemeli.  
+- Giriş verilerini islem_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Portföy verilerini hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, kâr özetlerini bildirim_bot ile kullanıcıya gönderin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 11/66: piyasa_kurtaricisi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 11. piyasa_kurtaricisi.py  
+**Dosya Yolu**: temel_islemler/piyasa_kurtaricisi.py  
+**Görev**: Kriz durumlarında sistemi korur (fiyat çöküşü, ağ kesintisi).  
+**Sınıf**: PiyasaKurtaricisi  
+**Fonksiyonlar**:  
+- `yonet_cokus(piyasa_veri: dict) -> dict`: Piyasa çöküşünde acil önlem alır.  
+- `kurtar_sistem(durum: dict) -> bool`: Sistemi kurtarır.  
+
+**Bağlı Modüller**:  
+- risk_denetleyicisi, islem_yapici, yedek_kurtarma, sistem_doktoru, sistem_saglik_koruyucu, volatilite_izleyici: Veri alır/gönderir.  
+- hafiza_merkezi: Kriz loglarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0  
+**Test**: BTC/USDT için acil SAT emri gönderilir, <10ms, kriz durumu loglanır.  
+
+**Talimat**:  
+- PiyasaKurtaricisi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `yonet_cokus`, %50+ fiyat düşüşünde tüm pozisyonları kapatmalı.  
+  - `kurtar_sistem`, ağ kesintisinde yedek_kurtarma’yı tetiklemeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Kriz loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, durumu bildirim_bot ile kullanıcıya bildir.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 12/66: sistem_doktoru.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 12. sistem_doktoru.py  
+**Dosya Yolu**: temel_islemler/sistem_doktoru.py  
+**Görev**: Sistem sağlığını, ağ gecikmesini ve kaynak kullanımını izler, aşırı yükte modülleri durdurur.  
+**Sınıf**: SistemDoktoru  
+**Fonksiyonlar**:  
+- `kontrol_saglik() -> dict`: Sistem durumunu kontrol eder.  
+- `bildir_sorun(sorun: dict) -> None`: Sorun bildirir.  
+- `izle_gecikme_butcesi() -> float`: Gecikme bütçesini izler.  
+- `optimize_donanim_performansi() -> None`: Donanım performansını optimize eder (NVIDIA JetPack).  
+- `izle_kaynak_kullanimi() -> dict`: Kaynak kullanımını takip eder.  
+- `olc_ag_gecikmesi() -> float`: Ağ gecikmesini ölçer.  
+- `ayarla_strateji_gecikme(gecikme: float) -> dict`: Stratejiyi gecikmeye göre ayarlar.  
+
+**Bağlı Modüller**:  
+- destekci_fonksiyonlar, hafiza_merkezi, otomasyon_yoneticisi, hft_yoneticisi, piyasa_kurtaricisi, sistem_saglik_koruyucu: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: psutil>=5.9.8, numpy>=1.26.0, ping3>=4.0.8  
+**Test**: CPU %90’a ulaşırsa dashboard güncellemeleri 10 saniyeye düşer, 15ms gecikmede pozisyon boyutu %50 azalır, işlem <50ms.  
+
+**Talimat**:  
+- SistemDoktoru sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `kontrol_saglik`, CPU/bellek/disk kullanımını izlemeli.  
+  - `optimize_donanim_performansi`, JetPack ile güç yönetimi yapmalı.  
+  - `ayarla_strateji_gecikme`, gecikmeye göre işlem hacmini ayarlamalı.  
+- Çıkış dict’lerini Redis event bus üzerinden yayınlayın, sorunları bildirim_bot ile kullanıcıya bildir.  
+- Sistem durumunu hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 13/66: sohbet_yuzeyi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 13. sohbet_yuzeyi.py  
+**Dosya Yolu**: temel_islemler/sohbet_yuzeyi.py  
+**Görev**: Terminal tabanlı kullanıcı arayüzü sağlar, gamified loglar üretir, analiz modlarını yapılandırır, geri bildirim toplar.  
+**Sınıf**: SohbetYuzeyi  
+**Fonksiyonlar**:  
+- `goster_loglar(loglar: list) -> None`: Logları gösterir.  
+- `islem_kullanici_girdisi() -> dict`: Kullanıcı girdilerini işler.  
+- `uret_oyunlastirilmis_loglar(loglar: list) -> None`: Oyunlaştırılmış loglar üretir.  
+- `goster_strateji_rehberleri() -> None`: Strateji rehberlerini sunar.  
+- `ayarla_analiz_modu(config: dict) -> dict`: Analiz modlarını ayarlar.  
+- `islem_kullanici_geribildirim(geribildirim: dict) -> dict`: Kullanıcı geri bildirimlerini işler (/feedback komutu ile).  
+
+**Bağlı Modüller**:  
+- karar_tartismasi, kasiyer, grafik_ui, config, rapor_uretici, dashboard_duzenleyici: Veri alır/gönderir.  
+- hafiza_merkezi: Geri bildirimleri kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: termcolor>=2.4.0  
+**Test**: Kâr özeti logları renkli gösterilir, /feedback komutu ile geri bildirim işlenir, işlem <100ms.  
+
+**Talimat**:  
+- SohbetYuzeyi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `goster_loglar`, renkli terminal çıktısı üretmeli.  
+  - `islem_kullanici_geribildirim`, /feedback komutu ile metin toplamalı.  
+  - `goster_strateji_rehberleri`, rehberler.json’dan rehberleri listelemeli.  
+- Geri bildirimleri rapor_uretici.analiz_kullanici_geribildirim’e gönderin, hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Giriş/çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın, kullanıcıya hata özeti gösterin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 14/66: grafik_yuzeyi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 14. grafik_yuzeyi.py  
+**Dosya Yolu**: temel_islemler/grafik_yuzeyi.py  
+**Görev**: Grafikler ve metrikler üretir, likidite haritaları ve makro korelasyon grafikleri oluşturur.  
+**Sınıf**: GrafikYuzeyi  
+**Fonksiyonlar**:  
+- `uret_grafik(veri: pd.DataFrame) -> None`: Grafik çizer, PNG kaydeder.  
+- `goster_ozet_loglar(veri: pd.DataFrame) -> None`: Özet logları gösterir.  
+
+**Bağlı Modüller**:  
+- kasiyer, hafiza_merkezi, grafik_ui, likidite_analizci, rapor_uretici, makro_korelasyon_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: matplotlib>=3.8.0, pandas>=2.2.0, plotly>=5.18.0  
+**Test**: Maksimum drawdown grafiği, likidite haritası ve makro korelasyon grafiği üretilir, PNG formatında kaydedilir, işlem <500ms.  
+
+**Talimat**:  
+- GrafikYuzeyi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `uret_grafik`, matplotlib ve plotly ile kâr/zarar, drawdown, likidite haritası ve makro korelasyon grafikleri çizmeli.  
+  - `goster_ozet_loglar`, metrik özetlerini terminalde göstermeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, grafikleri hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Çıkışları Redis event bus üzerinden yayınlayın.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 15/66: ogrenme_merkezi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 15. ogrenme_merkezi.py  
+**Dosya Yolu**: temel_islemler/ogrenme_merkezi.py  
+**Görev**: Modelleri optimize eder, risk-ayarlı öğrenme yapar, yeni stratejiler bulur.  
+**Sınıf**: OgrenmeMerkezi  
+**Fonksiyonlar**:  
+- `egit_denetimli(veri: pd.DataFrame) -> None`: Denetimli öğrenme yapar (RandomForest).  
+- `egit_takviyeli(veri: pd.DataFrame) -> None`: Takviyeli öğrenme uygular (Q-learning).  
+- `guncelle_modeller(modeller: dict) -> None`: Modelleri günceller.  
+- `bul_yeni_stratejiler(veri: pd.DataFrame) -> dict`: Yeni strateji fikirleri bulur.  
+- `test_et_ve_entegre_strateji(strateji: dict) -> bool`: Stratejiyi test eder ve entegre eder.  
+- `uret_derin_ogrenme_stratejisi(ai_model: str, veri: pd.DataFrame) -> dict`: DeepSeek ile yeni stratejiler üretir.  
+
+**Bağlı Modüller**:  
+- hafiza_merkezi, karar_tartismasi, onceden_egitim_yoneticisi, risk_denetleyicisi, performans_analizci, strateji_geri_test, derin_ogrenme_botu: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: scikit-learn>=1.4.0, numpy>=1.26.0, pickle>=4.0, transformers>=4.38.0  
+**Test**: Yeni strateji %75 kâr oranıyla entegre edilir, DeepSeek stratejisi backtest edilir, işlem <1s.  
+
+**Talimat**:  
+- OgrenmeMerkezi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `egit_denetimli`, RandomForest ile model eğitmeli.  
+  - `egit_takviyeli`, Q-learning ile ödül optimizasyonu yapmalı.  
+  - `test_et_ve_entegre_strateji`, strateji_geri_test ile doğrulamalı.  
+  - `uret_derin_ogrenme_stratejisi`, DeepSeek ile strateji üretmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Model güncellemelerini hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 16/66: hafiza_merkezi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 16. hafiza_merkezi.py  
+**Dosya Yolu**: temel_islemler/hafiza_merkezi.py  
+**Görev**: Tüm verileri SQLite veritabanına kaydeder ve yönetir, token/cüzdan veritabanını destekler, veri sıkıştırma uygular.  
+**Sınıf**: HafizaMerkezi  
+**Fonksiyonlar**:  
+- `kaydet_veri(veri: Any, veri_tipi: str) -> None`: Verileri zlib ile sıkıştırarak kaydeder.  
+- `yukle_veri(veri_tipi: str) -> Any`: Verileri yükler.  
+
+**Bağlı Modüller**:  
+- Tüm modüller: Veri kaydeder/yükler.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: sqlite3>=3.45.0, json>=2.0.9, zlib>=1.2.13  
+**Test**: BTC/USDT ve token verisi kaydedilir ve yüklenir, <100ms. 1000 coin çifti tarama senaryosunda performans test edilir.  
+
+**Talimat**:  
+- HafizaMerkezi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `kaydet_veri`, verileri SQLite’a zlib ile sıkıştırarak kaydetmeli.  
+  - `yukle_veri`, sıkıştırılmış verileri çözerek yüklemeli.  
+- Verileri veri_yapilari JSON şemasına göre doğrulayın, GDPR uyumluluğu için kişisel verileri 6 ay saklayın ve anonimleştirin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 17/66: destekci_fonksiyonlar.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 17. destekci_fonksiyonlar.py  
+**Dosya Yolu**: temel_islemler/destekci_fonksiyonlar.py  
+**Görev**: Loglama ve hata yönetimi sağlar, yapılandırılmış JSON loglama kullanır.  
+**Sınıf**: DestekciFonksiyonlar  
+**Fonksiyonlar**:  
+- `logla_olay(olay: str, seviye: str) -> None`: Olayları loglar (INFO/WARNING/ERROR, JSON formatında, timestamp, modül adı, hata kodu içerir).  
+- `yonet_hata(hata: Exception) -> None`: Hataları yönetir, yeniden fırlatır.  
+
+**Bağlı Modüller**:  
+- Tüm modüller, sistem_saglik_koruyucu: Loglama için kullanır.  
+
+**Kütüphaneler**: logging>=0.5.1.2, logging.handlers>=0.5.1.2  
+**Test**: “BTC AL” işlemi loglanır, hata dosyaya yazılır, log rotasyonu 10MB sınırı ile çalışır.  
+
+**Talimat**:  
+- DestekciFonksiyonlar sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `logla_olay`, JSON formatında (timestamp, modül adı, hata kodu, mesaj) loglamalı.  
+  - `yonet_hata`, hata türünü analiz edip uygun log seviyesinde kaydetmeli.  
+- Log rotasyonu için RotatingFileHandler kullanın, 10MB sınırı uygulayın.  
+- Hataları bildirim_bot ile kullanıcıya özet olarak bildir.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 18/66: paralel_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 18. paralel_analizci.py  
+**Dosya Yolu**: temel_islemler/paralel_analizci.py  
+**Görev**: Verileri paralel analiz eder.  
+**Sınıf**: ParalelAnalizci  
+**Fonksiyonlar**:  
+- `analiz_paralel(veri: pd.DataFrame) -> dict`: Paralel analiz yapar.  
+- `birleştir_sonuclar(sonuclar: list) -> dict`: Sonuçları birleştirir.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, piyasa_analizci, llm_sentiment_analizci: Veri alır/gönderir.  
+- hafiza_merkezi: Analiz sonuçlarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: multiprocessing>=0.70.16, numpy>=1.26.0, pandas>=2.2.0  
+**Test**: BTC/USDT için paralel analiz 5ms içinde tamamlanır, sonuçlar birleştirilir.  
+
+**Talimat**:  
+- ParalelAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `analiz_paralel`, verileri çoklu süreçlerle analiz etmeli.  
+  - `birleştir_sonuclar`, sonuçları ağırlıklı ortalama ile birleştirmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 19/66: otomasyon_yoneticisi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 19. otomasyon_yoneticisi.py  
+**Dosya Yolu**: temel_islemler/otomasyon_yoneticisi.py  
+**Görev**: Süreçleri yönetir, yeni modülleri entegre eder, Redis event bus ile iletişim sağlar.  
+**Sınıf**: OtomasyonYoneticisi  
+**Fonksiyonlar**:  
+- `yonet_otomasyon() -> None`: Otomasyon süreçlerini koordine eder.  
+- `zamanla_gorevler() -> None`: Görevleri zamanlar.  
+- `entegre_tradingview_bot(strateji: dict, webhook: str) -> None`: TradingView botunu entegre eder.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, islem_yapici, ogrenme_merkezi, hft_yoneticisi, piyasa_tarama, piyasa_rejim_analizci, likidite_analizci, hukuk_gunlugu, bildirim_bot, performans_analizci, balina_izleyici, grafik_ui, guncelleyici, mikro_yapi_analizci, rakip_analizci, risk_simulasyon, veri_kalite_kontrol, maliyet_simulatoru, dex_arbitraj_tarayici, teknik_analiz_motoru, kaynak_guvenilirlik_izleyici, volatilite_izleyici, regülasyon_kontrol, rapor_uretici, crypto_bubbles_tarama, bundle_analizci, llm_sentiment_analizci, derin_ogrenme_botu, dashboard_duzenleyici, piyasa_rejim_tahmincisi, zincirler_arasi_hareket_analizci, tokenomik_analizci, volatilite_olasilik_modeli, makro_korelasyon_analizci, cuzdan_kumesi_analizci: Süreçleri koordine eder.  
+- hafiza_merkezi: Logları kaydeder.  
+
+**Kütüphaneler**: schedule>=1.2.0, threading>=3.9, redis>=5.0.0, requests>=2.31.0  
+**Test**: Günlük veri çekme görevi zamanlanır, TradingView botu entegre edilir, 24 saatte bir çalışır, Redis event bus performansı test edilir.  
+
+**Talimat**:  
+- OtomasyonYoneticisi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `yonet_otomasyon`, Redis event bus ile modül iletişimini koordine etmeli.  
+  - `zamanla_gorevler`, günlük/haftalık görevleri schedule ile planlamalı.  
+  - `entegre_tradingview_bot`, webhook’ları bağlamalı.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın, kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 20/66: hft_yoneticisi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 20. hft_yoneticisi.py  
+**Dosya Yolu**: temel_islemler/hft_yoneticisi.py  
+**Görev**: 10ms içinde HFT kararları alır, MEV koruması sağlar.  
+**Sınıf**: HFTYoneticisi  
+**Fonksiyonlar**:  
+- `yurut_hft_islem(veri: dict) -> dict`: HFT işlemi yürütür.  
+- `optimize_gecikme() -> None`: Gecikmeyi minimize eder (numba).  
+- `aktiflestir_mev_korumasi(islem: dict) -> bool`: MEV saldırılarını engeller.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, islem_yapici, risk_denetleyicisi, piyasa_rejim_analizci, karar_tartismasi, sistem_doktoru, mikro_yapi_analizci, rakip_analizci, volatilite_izleyici, sistem_saglik_koruyucu: Veri alır/gönderir.  
+- hafiza_merkezi: İşlem loglarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numba>=0.59.0, numpy>=1.26.0, python-binance>=1.0.19, ccxt>=4.2.0  
+**Test**: %10+ fırsat için AL emri 10ms içinde yürütülür, MEV saldırısı engellenir, Jetson GPU’sunda mikro benchmark testi yapılır.  
+
+**Talimat**:  
+- HFTYoneticisi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `yurut_hft_islem`, HFT işlemlerini 10ms içinde yürütmeli.  
+  - `optimize_gecikme`, numba ile gecikmeyi minimize etmeli.  
+  - `aktiflestir_mev_korumasi`, işlem sıralamasını optimize etmeli.  
+- Giriş verilerini islem_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- İşlem loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın, kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 21/66: piyasa_tarama.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 21. piyasa_tarama.py  
+**Dosya Yolu**: temel_islemler/piyasa_tarama.py  
+**Görev**: Coin çiftlerini, yeni token’ları ve hacimli pariteleri tarar (Binance ve yerel veritabanı ile).  
+**Sınıf**: PiyasaTarama  
+**Fonksiyonlar**:  
+- `tara_tum_ciftler() -> pd.DataFrame`: Tüm coin çiftlerini tarar.  
+- `tespit_yeni_tokenlar() -> pd.DataFrame`: Yeni token’ları tespit eder.  
+- `filtrele_hacimli_pariteler(borsa: str, min_hacim: float) -> pd.DataFrame`: Yüksek hacimli pariteleri filtreler.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, firsat_avcisi, hafiza_merkezi, kaynak_guvenilirlik_izleyici, crypto_bubbles_tarama, tokenomik_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: requests>=2.31.0, pandas>=2.2.0  
+**Test**: Yeni token için %15+ fırsat tespit edilir, BTC/USDT gibi hacimli pariteler filtrelenir, <1s.  
+
+**Talimat**:  
+- PiyasaTarama sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tara_tum_ciftler`, Binance’ten tüm coin çiftlerini taramalı.  
+  - `tespit_yeni_tokenlar`, yerel veritabanı ve Binance listeleme duyurularından yeni token’ları tespit etmeli.  
+  - `filtrele_hacimli_pariteler`, yüksek hacimli pariteleri filtrelemeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış DataFrame’lerini Redis event bus üzerinden yayınlayın.  
+- Tarama sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 22/66: ek_ai_entegratoru.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 22. ek_ai_entegratoru.py  
+**Dosya Yolu**: temel_islemler/ek_ai_entegratoru.py  
+**Görev**: Yerel AI modellerini (FinBERT) ve sınırlı LLM çağrılarını (Claude, GPT-4o, DeepSeek) entegre eder.  
+**Sınıf**: EkAIEntegratoru  
+**Fonksiyonlar**:  
+- `entegre_model(model_adi: str) -> Any`: Modeli entegre eder.  
+- `yurut_model(model: Any, veri: dict) -> dict`: Modeli çalıştırır.  
+
+**Bağlı Modüller**:  
+- karar_tartismasi, ogrenme_merkezi, llm_sentiment_analizci, derin_ogrenme_botu: Veri alır/gönderir.  
+- hafiza_merkezi: Model loglarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: transformers>=4.38.0, openai>=1.10.0, anthropic>=0.8.0, python-dotenv>=1.0.0  
+**Test**: FinBERT ile sentiment analizi yapılır, DeepSeek ile AL kararı üretilir, <500ms.  
+
+**Talimat**:  
+- EkAIEntegratoru sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `entegre_model`, FinBERT veya LLM’leri entegre etmeli.  
+  - `yurut_model`, modeli çalıştırıp sonuçları döndürmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Model loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 23/66: onceden_egitim_yoneticisi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 23. onceden_egitim_yoneticisi.py  
+**Dosya Yolu**: temel_islemler/onceden_egitim_yoneticisi.py  
+**Görev**: Önceden eğitilmiş modelleri yükler ve doğrular.  
+**Sınıf**: OncedenEgitimYoneticisi  
+**Fonksiyonlar**:  
+- `yukle_onceden_egitilmis_model(model_yolu: str) -> Any`: Modeli yükler.  
+- `dogrula_model(model: Any, veri: pd.DataFrame) -> bool`: Modeli doğrular.  
+
+**Bağlı Modüller**:  
+- ogrenme_merkezi, hafiza_merkezi, strateji_geri_test, performans_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: scikit-learn>=1.4.0, pickle>=4.0  
+**Test**: 1 günlük simülasyon yapılır, model doğruluğu >%80.  
+
+**Talimat**:  
+- OncedenEgitimYoneticisi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `yukle_onceden_egitilmis_model`, modeli pickle ile yüklemeli.  
+  - `dogrula_model`, modelin doğruluğunu test verileriyle kontrol etmeli.  
+- Model loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 24/66: yedek_kurtarma.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 24. yedek_kurtarma.py  
+**Dosya Yolu**: temel_islemler/yedek_kurtarma.py  
+**Görev**: API kesintilerinde scraping veya yerel veritabanına geçer.  
+**Sınıf**: YedekKurtarma  
+**Fonksiyonlar**:  
+- `gec_yedek_kaynak(kaynak: str) -> bool`: Yedek kaynağa geçer.  
+- `kurtar_ariza(durum: dict) -> bool`: Sistemi kurtarır.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, piyasa_kurtaricisi, sistem_doktoru, sistem_saglik_koruyucu: Veri alır/gönderir.  
+- hafiza_merkezi: Logları kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: requests>=2.31.0, json>=2.0.9  
+**Test**: Yerel veritabanından veri çekilir, <1s. API kesintisi senaryosu test edilir.  
+
+**Talimat**:  
+- YedekKurtarma sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `gec_yedek_kaynak`, scraping veya yerel veritabanına geçiş yapmalı.  
+  - `kurtar_ariza`, sistem durumunu kontrol edip kurtarma yapmalı.  
+- Çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Logları hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 25/66: piyasa_rejim_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 25. piyasa_rejim_analizci.py  
+**Dosya Yolu**: temel_islemler/piyasa_rejim_analizci.py  
+**Görev**: Piyasa koşullarını analiz eder, stratejileri uyarlar.  
+**Sınıf**: PiyasaRejimAnalizci  
+**Fonksiyonlar**:  
+- `analiz_piyasa_rejimi(veri: pd.DataFrame) -> dict`: Piyasa rejimini belirler.  
+- `ayarla_strateji(rejim: dict) -> dict`: Stratejiyi uyarlar.  
+
+**Bağlı Modüller**:  
+- piyasa_analizci, karar_tartismasi, hft_yoneticisi, hafiza_merkezi, risk_denetleyicisi, duyarlilik_analizci, volatilite_izleyici, piyasa_rejim_tahmincisi: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scipy>=1.12.0  
+**Test**: Durgun piyasada işlem sıklığı %50 azalır, işlem <100ms.  
+
+**Talimat**:  
+- PiyasaRejimAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `analiz_piyasa_rejimi`, piyasa rejimini (trend/range) belirlemeli.  
+  - `ayarla_strateji`, rejime göre stratejileri güncellemeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+# TiryakiPiyasaFatihi V1.6 - Modül Prompt’ları (26-66)
+
+## Prompt 26/66: likidite_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 26. likidite_analizci.py  
+**Dosya Yolu**: temel_islemler/likidite_analizci.py  
+**Görev**: Order book hacmini analiz eder, likidite boşluklarını ve haritalarını görselleştirir, pozisyon boyutunu doğrular (Binance verileriyle).  
+**Sınıf**: LikiditeAnalizci  
+**Fonksiyonlar**:  
+- `analiz_emir_defteri(veri: pd.DataFrame) -> dict`: Order book’u analiz eder.  
+- `dogrula_pozisyon_boyutu(islem: dict) -> bool`: Pozisyon boyutunu doğrular.  
+- `uret_isi_haritasi(veri: pd.DataFrame) -> str`: Likidite ısı haritası üretir.  
+- `tespit_likidite_bosluklari(veri: pd.DataFrame) -> dict`: Likidite boşluklarını tespit eder.  
+- `filtrele_yuksek_likidite_proje(piyasa_cap: str, borsalar: list) -> pd.DataFrame`: Yüksek likidite projeleri filtreler.  
+- `uret_likidite_haritasi(veri: pd.DataFrame) -> str`: Stop havuzları ve liquidation cluster’larını görselleştirir.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, islem_yapici, firsat_avcisi, hafiza_merkezi, maliyet_simulatoru, grafik_ui, teknik_analiz_motoru: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: python-binance>=1.0.19, numpy>=1.26.0, pandas>=2.2.0, plotly>=5.18.0  
+**Test**: BTC/USDT için 1 BTC’lik pozisyon likiditeye uygunluğu doğrulanır, top 100 coin filtrelenir, heatmap PNG olarak kaydedilir, işlem <100ms.  
+
+**Talimat**:  
+- LikiditeAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `analiz_emir_defteri`, Binance order book verilerini analiz etmeli.  
+  - `dogrula_pozisyon_boyutu`, pozisyonun likiditeye uygunluğunu kontrol etmeli.  
+  - `uret_isi_haritasi`, likidite ısı haritasını PNG olarak kaydetmeli.  
+  - `tespit_likidite_bosluklari`, likidite boşluklarını tespit etmeli.  
+  - `filtrele_yuksek_likidite_proje`, yüksek likidite projelerini filtrelemeli.  
+  - `uret_likidite_haritasi`, stop havuzlarını görselleştirmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 27/66: hukuk_gunlugu.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 27. hukuk_gunlugu.py  
+**Dosya Yolu**: temel_islemler/hukuk_gunlugu.py  
+**Görev**: API kullanımını regülasyonlara uygun loglar, şifreleme anahtar rotasyonunu kaydeder.  
+**Sınıf**: HukukGunlugu  
+**Fonksiyonlar**:  
+- `kontrol_api_uyumluluk(api_veri: dict) -> bool`: API uyumluluğunu kontrol eder.  
+- `logla_yasal_veri(veri: dict) -> None`: Yasal verileri loglar (JSON, AES-256 şifreli).  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, islem_yapici, hafiza_merkezi, destekci_fonksiyonlar, regülasyon_kontrol: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: json>=2.0.9, logging>=0.5.1.2, cryptography>=41.0.0  
+**Test**: Binance API veri çekimi yasallığı doğrulanır, log dosyasına yazılır, işlem <50ms.  
+
+**Talimat**:  
+- HukukGunlugu sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `kontrol_api_uyumluluk`, Binance ve Etherscan API çağrılarının uyumluluğunu kontrol etmeli.  
+  - `logla_yasal_veri`, verileri AES-256 ile şifreleyip JSON formatında loglamalı.  
+- Logları hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 28/66: strateji_geri_test.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 28. strateji_geri_test.py  
+**Dosya Yolu**: temel_islemler/strateji_geri_test.py  
+**Görev**: Stratejileri geçmiş verilerle test eder.  
+**Sınıf**: StratejiGeriTest  
+**Fonksiyonlar**:  
+- `test_strateji(strateji: dict, veri: pd.DataFrame) -> dict`: Stratejiyi test eder.  
+- `raporla_test_sonuclari(sonuclar: dict) -> str`: Sonuçları JSON olarak raporlar.  
+- `backtest_elliot_stratejisi(parite: str, zaman_dilimi: str) -> dict`: Elliot Wave stratejisini test eder.  
+
+**Bağlı Modüller**:  
+- karar_tartismasi, hafiza_merkezi, hft_yoneticisi, onceden_egitim_yoneticisi, performans_analizci, ogrenme_merkezi, derin_ogrenme_botu: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scikit-learn>=1.4.0  
+**Test**: Claude’un stratejisi 7 gün verisiyle test edilir, Solana 15 dakikalık grafikte Elliot Wave backtest’i yapılır, kâr oranı >%70, işlem <1s.  
+
+**Talimat**:  
+- StratejiGeriTest sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `test_strateji`, stratejiyi geçmiş Binance verileriyle test etmeli.  
+  - `raporla_test_sonuclari`, test sonuçlarını JSON formatında döndürmeli.  
+  - `backtest_elliot_stratejisi`, Elliot Wave stratejisini test etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Test sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 29/66: dengeleyici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 29. dengeleyici.py  
+**Dosya Yolu**: temel_islemler/dengeleyici.py  
+**Görev**: Model ağırlıklarını başarı oranına göre ayarlar.  
+**Sınıf**: Dengeleyici  
+**Fonksiyonlar**:  
+- `izle_model_performansi(modeller: dict) -> dict`: Model performansını izler.  
+- `ayarla_model_agirliklari(performans: dict) -> dict`: Ağırlıkları ayarlar.  
+
+**Bağlı Modüller**:  
+- karar_tartismasi, hafiza_merkezi, performans_analizci, ogrenme_merkezi: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0  
+**Test**: Claude %70, GPT-4o %50 başarı oranına göre ağırlıklar ayarlanır, işlem <100ms.  
+
+**Talimat**:  
+- Dengeleyici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `izle_model_performansi`, model performansını izlemeli.  
+  - `ayarla_model_agirliklari`, başarı oranına göre ağırlıkları güncellemeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Ağırlık güncellemelerini hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 30/66: bildirim_bot.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 30. bildirim_bot.py  
+**Dosya Yolu**: temel_islemler/bildirim_bot.py  
+**Görev**: Kâr özetleri, fırsatlar, scam uyarıları, volatilite tahminleri ve hata özetleri için Telegram’a bildirim gönderir.  
+**Sınıf**: BildirimBot  
+**Fonksiyonlar**:  
+- `gonder_telegram_bildirim(mesaj: str) -> None`: Telegram’a bildirim gönderir.  
+
+**Bağlı Modüller**:  
+- kasiyer, firsat_avcisi, hafiza_merkezi, otomasyon_yoneticisi, rapor_uretici, kaynak_guvenilirlik_izleyici, bundle_analizci, tokenomik_analizci, volatilite_olasilik_modeli: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: requests>=2.31.0, python-dotenv>=1.0.0  
+**Test**: Kâr özeti, rug pull uyarısı, volatilite tahmini ve “API hatası” bildirimi Telegram’a gönderilir, <1s.  
+
+**Talimat**:  
+- BildirimBot sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `gonder_telegram_bildirim`, Telegram API ile mesaj göndermeli.  
+- API anahtarlarını .env’den python-dotenv ile çekin.  
+- Bildirim loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 31/66: performans_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 31. performans_analizci.py  
+**Dosya Yolu**: temel_islemler/performans_analizci.py  
+**Görev**: Model kârlılığını izler, başarısızlık nedenlerini analiz eder, yeniden eğitimi tetikler.  
+**Sınıf**: PerformansAnalizci  
+**Fonksiyonlar**:  
+- `izle_model_performansi(modeller: dict) -> dict`: Performansı izler.  
+- `tetikle_yeniden_egitim(model: str) -> None`: Yeniden eğitimi tetikler.  
+- `analiz_basarisizlik_desenleri(veri: pd.DataFrame) -> dict`: Başarısızlık modellerini analiz eder.  
+- `korelasyon_piyasa_kosullari(veri: pd.DataFrame) -> dict`: Piyasa koşullarıyla ilişkilendirir.  
+- `karsilastir_model_skorlari(modeller: dict) -> dict`: Modellerin başarı oranlarını karşılaştırır.  
+
+**Bağlı Modüller**:  
+- karar_tartismasi, ogrenme_merkezi, hafiza_merkezi, piyasa_rejim_analizci, dengeleyici, onceden_egitim_yoneticisi, rapor_uretici: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scipy>=1.12.0  
+**Test**: %60 altında performans gösteren model yeniden eğitilir, başarısızlık nedeni loglanır, işlem <500ms.  
+
+**Talimat**:  
+- PerformansAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `izle_model_performansi`, model kârlılığını izlemeli.  
+  - `tetikle_yeniden_egitim`, düşük performanslı modelleri yeniden eğitmeli.  
+  - `analiz_basarisizlik_desenleri`, başarısızlık nedenlerini analiz etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 32/66: balina_izleyici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 32. balina_izleyici.py  
+**Dosya Yolu**: temel_islemler/balina_izleyici.py  
+**Görev**: 10M+ USDT hareketlerini analiz eder, tuzakları önler, bundle sniping aktivitelerini izler (Etherscan ve yerel veritabanı ile).  
+**Sınıf**: BalinaIzleyici  
+**Fonksiyonlar**:  
+- `izle_balina_hareketleri(veri: pd.DataFrame) -> dict`: Balina hareketlerini takip eder.  
+- `analiz_balina_davranisi(veri: pd.DataFrame) -> dict`: Davranışlarını analiz eder.  
+- `uret_balon_haritasi(zincir_veri: pd.DataFrame) -> dict`: Holder dağılımını görselleştirir.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, karar_tartismasi, hafiza_merkezi, rakip_analizci, kaynak_guvenilirlik_izleyici, bundle_analizci, zincirler_arasi_hareket_analizci, cuzdan_kumesi_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: web3.py>=6.15.0, numpy>=1.26.0, pandas>=2.2.0  
+**Test**: 10M USDT satan balina için “bekle” önerisi doğrulanır, %6’lık holder cluster’ı tespit edilir, işlem <500ms.  
+
+**Talimat**:  
+- BalinaIzleyici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `izle_balina_hareketleri`, Etherscan ve yerel veritabanından balina hareketlerini izlemeli.  
+  - `analiz_balina_davranisi`, davranışları analiz etmeli.  
+  - `uret_balon_haritasi`, holder dağılımını görselleştirmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- GDPR uyumluluğu için cüzdan verilerini anonimleştirin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 33/66: grafik_ui.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 33. grafik_ui.py  
+**Dosya Yolu**: temel_islemler/grafik_ui.py  
+**Görev**: Web dashboard üretir, likidite ısı haritası, rug pull olasılıkları, topluluk skoru, makro korelasyon grafikleri ve rehber videolar sunar. Yoğun yükte statik PNG üretimi kullanılır.  
+**Sınıf**: GrafikUI  
+**Fonksiyonlar**:  
+- `uret_dashboard(veri: dict) -> None`: Dashboard’u çizer (kâr grafikleri, işlem geçmişi, likidite haritası, makro korelasyon).  
+- `guncelle_canli_veri(veri: dict) -> None`: Canlı verileri günceller (2 saniyede bir, yoğun yükte 5 saniye).  
+- `goster_strateji_rehberleri() -> None`: Rehber videoları JSON dosyasından listeleyerek sunar.  
+- `optimize_arayuz_tasarimi(optimizasyon_veri: dict) -> None`: Arayüzü optimize eder.  
+- `gorsellestir_emir_durumu(emir_id: str) -> None`: Emir durumunu gerçek zamanlı gösterir.  
+- `gorsellestir_backtest_sonuc(sonuc: dict) -> None`: Backtest sonuçlarını görselleştirir.  
+- `olustur_ozellestirilmis_dashboard(kullanici: str) -> None`: Özelleştirilmiş emir giriş dashboard’u oluşturur.  
+
+**Bağlı Modüller**:  
+- kasiyer, grafik_yuzeyi, karar_tartismasi, hafiza_merkezi, likidite_analizci, otomasyon_yoneticisi, sistem_doktoru, sohbet_yuzeyi, rapor_uretici, dashboard_duzenleyici, kaynak_guvenilirlik_izleyici, bundle_analizci, makro_korelasyon_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: streamlit>=1.31.0, pandas>=2.2.0, plotly>=5.18.0  
+**Test**: Dashboard 2 saniyede güncellenir, ısı haritası, rug pull skoru ve makro korelasyon PNG olarak kaydedilir, rehber videolar listelenir, BTC/USDT market buy emri yerleştirilir, işlem <2s.  
+
+**Talimat**:  
+- GrafikUI sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `uret_dashboard`, Streamlit ile kâr grafikleri, işlem geçmişi ve likidite haritası çizmeli.  
+  - `guncelle_canli_veri`, canlı verileri güncellemeli.  
+  - `goster_strateji_rehberleri`, rehber videolarını listelemeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, dashboard verilerini hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın, kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 34/66: guncelleyici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 34. guncelleyici.py  
+**Dosya Yolu**: temel_islemler/guncelleyici.py  
+**Görev**: Sistemi manuel çekme veya cron job ile günceller, hatalı güncellemeler için rollback mekanizması içerir.  
+**Sınıf**: Guncelleyici  
+**Fonksiyonlar**:  
+- `kontrol_guncellemeler() -> bool`: GitHub reposunu kontrol eder.  
+- `uygula_yama(yama_veri: dict) -> None`: Güncellemeleri uygular, rollback için yedek alır.  
+- `geri_al_guncelleme(yama_id: str) -> bool`: Hatalı güncellemeyi geri alır.  
+
+**Bağlı Modüller**:  
+- baslat, hafiza_merkezi, config, otomasyon_yoneticisi: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: requests>=2.31.0, python-dotenv>=1.0.0  
+**Test**: GitHub’dan patch çekilip karar_tartismasi.py güncellenir, <30s, rollback testi yapılır.  
+
+**Talimat**:  
+- Guncelleyici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `kontrol_guncellemeler`, GitHub reposunu manuel veya cron job ile kontrol etmeli.  
+  - `uygula_yama`, güncellemeleri uygulamalı, yedek almalı.  
+  - `geri_al_guncelleme`, hatalı güncellemeyi geri almalı.  
+- Güncelleme loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın, kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 35/66: mikro_yapi_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 35. mikro_yapi_analizci.py  
+**Dosya Yolu**: temel_islemler/mikro_yapi_analizci.py  
+**Görev**: Emir tiplerini, yürütme hızını, komisyonları, bid-ask agresyonunu, manipülasyon desenlerini ve piyasa mikro yapısını analiz eder (Binance verileriyle).  
+**Sınıf**: MikroYapiAnalizci  
+**Fonksiyonlar**:  
+- `analiz_emir_defteri_yapisi(veri: pd.DataFrame) -> dict`: Order book yapısını analiz eder.  
+- `degerlendir_yurutme_hizi(veri: pd.DataFrame) -> float`: Yürütme hızını değerlendirir.  
+- `hesapla_komisyon_etkisi(islem: dict) -> float`: Komisyon etkisini hesaplar.  
+- `uret_footprint_grafik(veri: pd.DataFrame) -> str`: Footprint chart üretir.  
+- `analiz_bid_ask_dengesizligi(veri: pd.DataFrame) -> dict`: Bid-ask dengesizliğini analiz eder.  
+- `tespit_delta_farki(veri: pd.DataFrame) -> dict`: Delta farkını tespit eder.  
+- `tespit_manipulasyon_desenleri(veri: pd.DataFrame) -> dict`: Spoofing ve wash trading desenlerini tespit eder.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, hft_yoneticisi, islem_yapici, hafiza_merkezi, teknik_analiz_motoru, rakip_analizci, likidite_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: python-binance>=1.0.19, numpy>=1.26.0, pandas>=2.2.0, plotly>=5.18.0  
+**Test**: BTC/USDT için agresif alış sinyali tespit edilir, footprint chart PNG olarak kaydedilir, delta farkı ve spoofing deseni doğrulanır, işlem <10ms.  
+
+**Talimat**:  
+- MikroYapiAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `analiz_emir_defteri_yapisi`, Binance order book yapısını analiz etmeli.  
+  - `degerlendir_yurutme_hizi`, yürütme hızını ölçmeli.  
+  - `uret_footprint_grafik`, footprint chart’ı PNG olarak kaydetmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 36/66: rakip_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 36. rakip_analizci.py  
+**Dosya Yolu**: temel_islemler/rakip_analizci.py  
+**Görev**: HFT botlarının stratejilerini modeller, spoofing ve piyasa manipülasyonlarını tespit eder (Binance verileriyle).  
+**Sınıf**: RakipAnalizci  
+**Fonksiyonlar**:  
+- `tahmin_rakip_strateji(veri: pd.DataFrame) -> dict`: RandomForestClassifier ile strateji tahmini yapar.  
+- `modelle_oyun_teorisi_tepkileri(veri: pd.DataFrame) -> dict`: Oyun teorisi tepkilerini modeller.  
+- `tespit_spoofing_desenleri(veri: pd.DataFrame) -> dict`: Spoofing desenlerini z-skor ile tespit eder.  
+- `tespit_piyasa_manipulasyonu(emir_defteri: pd.DataFrame) -> dict`: Ani fitil hareketleri ve sahte hacim artışlarını tespit eder.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, hft_yoneticisi, balina_izleyici, mikro_yapi_analizci, karar_tartismasi, bundle_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scipy>=1.12.0, scikit-learn>=1.4.0  
+**Test**: BTC/USDT için spoofing tespit edilirse işlem iptal edilir, sahte hacim tespit edilir, RandomForestClassifier %70 doğruluk sağlar, işlem <100ms.  
+
+**Talimat**:  
+- RakipAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tahmin_rakip_strateji`, RandomForestClassifier ile rakip stratejilerini tahmin etmeli.  
+  - `modelle_oyun_teorisi_tepkileri`, oyun teorisi tepkilerini modellemeli.  
+  - `tespit_spoofing_desenleri`, z-skor ile spoofing tespit etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 37/66: risk_simulasyon.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 37. risk_simulasyon.py  
+**Dosya Yolu**: temel_islemler/risk_simulasyon.py  
+**Görev**: İşlem öncesi portföy riskini simüle eder, kontraryen stratejiler için ek risk değerlendirmesi yapar.  
+**Sınıf**: RiskSimulasyon  
+**Fonksiyonlar**:  
+- `simule_portfoy_riski(portfoy: dict, islem: dict) -> dict`: Monte Carlo simülasyonu ile VaR ve CVaR hesaplar.  
+- `hesapla_dusus_olasiligi(portfoy: dict) -> float`: Drawdown olasılığını hesaplar.  
+- `degerlendir_kontraryen_risk(sentiment: dict, islem: dict) -> dict`: Kontraryen stratejiler için risk analizi yapar.  
+- `backtest_elliot_stratejisi(parite: str, zaman_dilimi: str) -> dict`: Elliot Wave stratejisini geçmiş verilerle test eder.  
+
+**Bağlı Modüller**:  
+- islem_yapici, kasiyer, piyasa_analizci, volatilite_izleyici, risk_denetleyicisi, llm_sentiment_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scipy>=1.12.0  
+**Test**: BTC/USDT işlemi için drawdown olasılığı %10’un altında doğrulanır, kontraryen strateji riski analiz edilir, simülasyon <500ms, %50 fiyat çöküşü senaryosu test edilir.  
+
+**Talimat**:  
+- RiskSimulasyon sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `simule_portfoy_riski`, Monte Carlo ile VaR ve CVaR hesaplamalı.  
+  - `hesapla_dusus_olasiligi`, drawdown olasılığını hesaplamalı.  
+  - `degerlendir_kontraryen_risk`, FinBERT sentiment verileriyle risk analiz etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Simülasyon sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 38/66: veri_kalite_kontrol.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 38. veri_kalite_kontrol.py  
+**Dosya Yolu**: temel_islemler/veri_kalite_kontrol.py  
+**Görev**: Binance, Etherscan ve scraping verilerinin doğruluğunu kontrol eder, anomalilerin sebeplerini analiz eder (OtomatikDoğrulayıcıMotor).  
+**Sınıf**: VeriKaliteKontrol  
+**Fonksiyonlar**:  
+- `dogrula_veri_butunlugu(veri: pd.DataFrame) -> bool`: Eksik veri ve tutarsızlıkları kontrol eder.  
+- `analiz_anomali_nedeni(veri: pd.DataFrame) -> dict`: Anomalilerin kaynağını belirler (API hatası, sahte veri).  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, veri_duzenleyici, piyasa_analizci, kaynak_guvenilirlik_izleyici, llm_sentiment_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scipy>=1.12.0  
+**Test**: BTC/USDT fiyat anomalisi için API hatası tespit edilir, loglanır, işlem <100ms.  
+
+**Talimat**:  
+- VeriKaliteKontrol sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `dogrula_veri_butunlugu`, eksik veri ve tutarsızlıkları kontrol etmeli.  
+  - `analiz_anomali_nedeni`, anomalilerin kaynağını analiz etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 39/66: maliyet_simulatoru.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 39. maliyet_simulatoru.py  
+**Dosya Yolu**: temel_islemler/maliyet_simulatoru.py  
+**Görev**: Komisyonlar, slippage, spread ve MEV etkilerini simüle eder, net kâr hesaplar.  
+**Sınıf**: MaliyetSimulatoru  
+**Fonksiyonlar**:  
+- `hesapla_net_kar(islem: dict, piyasa_veri: pd.DataFrame) -> float`: Net kârı hesaplar.  
+- `simule_maliyet_etkisi(islem: dict, piyasa_veri: pd.DataFrame) -> dict`: Maliyet etkisini simüle eder.  
+
+**Bağlı Modüller**:  
+- islem_yapici, kasiyer, likidite_analizci, mikro_yapi_analizci, risk_simulasyon: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0  
+**Test**: %15 kâr fırsatının net kârı %6 olarak doğrulanır, simülasyon <50ms.  
+
+**Talimat**:  
+- MaliyetSimulatoru sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `hesapla_net_kar`, komisyon, slippage ve spread etkilerini hesaba katarak net kâr hesaplamalı.  
+  - `simule_maliyet_etkisi`, maliyet etkilerini simüle etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Simülasyon sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 40/66: dex_arbitraj_tarayici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 40. dex_arbitraj_tarayici.py  
+**Dosya Yolu**: temel_islemler/dex_arbitraj_tarayici.py  
+**Görev**: L2 DEX’lerde arbitraj fırsatlarını yakalar, üçlü arbitraj döngüleri bulur, rug pull riskini değerlendirir (Etherscan ve ücretsiz Solana RPC’leri ile).  
+**Sınıf**: DexArbitrajTarayici  
+**Fonksiyonlar**:  
+- `tara_dex_fiyatlari() -> pd.DataFrame`: DEX fiyatlarını tarar.  
+- `hesapla_arbitraj_firsati(veri: pd.DataFrame) -> dict`: Arbitraj fırsatını hesaplar.  
+- `tara_ucgen_arbitraj(veri: pd.DataFrame) -> dict`: Üçlü arbitraj döngülerini bulur.  
+- `degerlendir_rug_riski(kontrat_adresi: str) -> float`: DEX token’ı için rug pull riskini değerlendirir.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, firsat_avcisi, hafiza_merkezi, likidite_analizci, kaynak_guvenilirlik_izleyici, bundle_analizci, tokenomik_analizci, zincirler_arasi_hareket_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: web3.py>=6.15.0, requests>=2.31.0, pandas>=2.2.0  
+**Test**: Arbitrum’da %5 fiyat farkı tespit edilir, rug pull riski %80 üzeri token filtrelenir, işlem <1s, düşük likidite senaryosu test edilir.  
+
+**Talimat**:  
+- DexArbitrajTarayici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tara_dex_fiyatlari`, Etherscan ve Solana RPC’lerden fiyatları taramalı.  
+  - `hesapla_arbitraj_firsati`, arbitraj fırsatlarını hesaplamalı.  
+  - `tara_ucgen_arbitraj`, üçlü arbitraj döngülerini bulmalı.  
+  - `degerlendir_rug_riski`, tokenomik verileriyle rug riskini değerlendirmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Tarama sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, rug uyarılarını bildirim_bot ile gönderin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 41/66: teknik_analiz_motoru.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 41. teknik_analiz_motoru.py  
+**Dosya Yolu**: temel_islemler/teknik_analiz_motoru.py  
+**Görev**: Multi-timeframe SR, liquidity sweep, sniper entry, Elliot Wave sinyalleri, multi-timeframe senkronizasyon ve daha fazlasını analiz eder.  
+**Sınıf**: TeknikAnalizMotoru  
+**Fonksiyonlar**:  
+- `tespit_coklu_zaman_sr(veri: pd.DataFrame) -> dict`: Çoklu zaman diliminde SR tespit eder.  
+- `izle_likidite_supurme(veri: pd.DataFrame) -> dict`: Likidite süpürmesini izler.  
+- `uret_keskin_giris_bolgesi(veri: pd.DataFrame) -> dict`: Sniper giriş bölgesi oluşturur (Fibonacci, FVG).  
+- `analiz_vwap_hacim_profili(veri: pd.DataFrame) -> dict`: VWAP ve hacim profili analiz eder.  
+- `tespit_stop_avi(veri: pd.DataFrame) -> dict`: Stop hunt tespit eder.  
+- `izle_mw_tuzak_desen(veri: pd.DataFrame) -> dict`: M/W tuzak desenlerini izler.  
+- `degerlendir_trend_yonu(veri: pd.DataFrame) -> dict`: Trend yönünü değerlendirir.  
+- `yonet_geri_alim_mantigi(veri: pd.DataFrame) -> dict`: SR reclaim mantığını işler.  
+- `degistir_fitil_govde_modu(mod: str) -> None`: Wick/body modunu değiştirir.  
+- `onceliklendir_pd_array(veri: pd.DataFrame) -> dict`: %50 fib seviyesine göre işlem önerir.  
+- `tetikle_rto_giris(veri: pd.DataFrame) -> dict`: RTO girişini tetikler.  
+- `tespit_amd_desen(veri: pd.DataFrame) -> dict`: AMD döngülerini tespit eder.  
+- `uyumlastir_mtf_islemler(veri: pd.DataFrame) -> dict`: MTF uyumunu sağlar (HTF trend ağırlıklandırması).  
+- `tespit_delta_farki(veri: pd.DataFrame) -> dict`: Delta farkını tespit eder.  
+- `uret_elliot_dalga_sinyali(veri: pd.DataFrame, zigzag_donem: int) -> dict`: Elliot Wave sinyalleri üretir.  
+- `dogrula_trend_yonu(veri: pd.DataFrame, wma_ayarlar: dict) -> bool`: WMA çizgilerine göre trend yönünü doğrular.  
+- `planla_sistematik_islem(parite: str, major_seviyeler: dict) -> dict`: Major destek/direnç seviyelerinde işlem planlar.  
+- `senkronize_mtf_sinyaller(veri: pd.DataFrame) -> dict`: Çoklu zaman dilimlerinde trend çakışmalarını tespit eder.  
+
+**Bağlı Modüller**:  
+- piyasa_analizci, keskin_nisanci, islem_yapici, firsat_avcisi, hafiza_merkezi, likidite_analizci, mikro_yapi_analizci, karar_tartismasi, strateji_geri_test: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, pandas_ta>=0.3.14, scipy>=1.12.0  
+**Test**: BTC/USDT için 0.705–0.79 fib bölgesinde “mükemmel giriş” tespit edilir, Solana 15 dakikalık grafikte Elliot Wave sinyali üretilir, RTO girişi ve MTF senkronizasyonu doğrulanır, >%80 doğruluk, işlem <100ms.  
+
+**Talimat**:  
+- TeknikAnalizMotoru sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tespit_coklu_zaman_sr`, çoklu zaman diliminde SR tespit etmeli.  
+  - `izle_likidite_supurme`, likidite süpürmelerini izlemeli.  
+  - `senkronize_mtf_sinyaller`, trend çakışmalarını doğrulamalı.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 42/66: kaynak_guvenilirlik_izleyici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 42. kaynak_guvenilirlik_izleyici.py  
+**Dosya Yolu**: temel_islemler/kaynak_guvenilirlik_izleyici.py  
+**Görev**: Scraping ve yerel veritabanı kaynaklarının güvenilirliğini skorlar, sahte veriyi ve hesapları tespit eder (FinBERT ile, OtomatikDoğrulayıcıMotor).  
+**Sınıf**: KaynakGuvenilirlikIzleyici  
+**Fonksiyonlar**:  
+- `skorla_kaynak(kaynak_veri: dict) -> float`: Kaynağın güvenilirliğini skorlar (%40 yaş, %30 doğruluk, %30 etkileşim).  
+- `tespit_sahte_veri(veri: pd.DataFrame) -> bool`: Sahte veriyi tespit eder (FinBERT ile bot hesabı sınıflandırma).  
+- `engelle_kaynak(kaynak_id: str) -> None`: Kaynağı engeller.  
+- `guncelle_itibar(kaynak_id: str, skor_degisim: float) -> None`: İtibar skorunu günceller.  
+- `hesapla_rug_olasiligi(kontrat_adresi: str) -> float`: Rug pull olasılık skoru hesaplar.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, veri_kalite_kontrol, duyarlilik_analizci, hafiza_merkezi, otomasyon_yoneticisi, llm_sentiment_analizci, crypto_bubbles_tarama, tokenomik_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: pandas>=2.2.0, numpy>=1.26.0, transformers>=4.38.0  
+**Test**: Sahte X verisi tespit edilir, rug pull olasılığı %80 üzeri token için uyarı üretilir, kaynak engellenir, işlem <100ms.  
+
+**Talimat**:  
+- KaynakGuvenilirlikIzleyici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `skorla_kaynak`, kaynak güvenilirliğini ağırlıklı ortalama ile hesaplamalı.  
+  - `tespit_sahte_veri`, FinBERT ile bot hesaplarını sınıflandırmalı.  
+  - `hesapla_rug_olasiligi`, tokenomik verileriyle risk skoru üretmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, rug pull uyarılarını bildirim_bot ile gönderin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 43/66: volatilite_izleyici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 43. volatilite_izleyici.py  
+**Dosya Yolu**: temel_islemler/volatilite_izleyici.py  
+**Görev**: Piyasa oynaklığını gerçek zamanlı tespit eder (UyarlanabilirRiskMotoru).  
+**Sınıf**: VolatiliteIzleyici  
+**Fonksiyonlar**:  
+- `olc_volatilite(piyasa_veri: pd.DataFrame) -> float`: Volatilitesini hesaplar (ATR).  
+- `tespit_volatilite_artisi(volatilite: float, esik: float) -> bool`: Ani artışları tespit eder (%20 eşik).  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, piyasa_analizci, risk_denetleyicisi, piyasa_rejim_analizci, otomasyon_yoneticisi, volatilite_olasilik_modeli: Veri alır/gönderir.  
+- hafiza_merkezi: Volatilite verilerini kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0  
+**Test**: BTC/USDT için volatilite spike’ı tespit edilir, işlem <10ms.  
+
+**Talimat**:  
+- VolatiliteIzleyici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `olc_volatilite`, ATR ile volatilite hesaplamalı.  
+  - `tespit_volatilite_artisi`, %20 eşikle ani artışları tespit etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Volatilite verilerini hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 44/66: sistem_saglik_koruyucu.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 44. sistem_saglik_koruyucu.py  
+**Dosya Yolu**: temel_islemler/sistem_saglik_koruyucu.py  
+**Görev**: Jetson donanım sağlığını izler, acil eylemleri tetikler (JetsonSağlıkİzleyici). Modül öncelikleri tanımlıdır (hft_yoneticisi yüksek, grafik_ui düşük).  
+**Sınıf**: SistemSaglikKoruyucu  
+**Fonksiyonlar**:  
+- `kontrol_cpu_kullanimi() -> float`: CPU kullanımını kontrol eder.  
+- `kontrol_bellek_kullanimi() -> float`: Bellek kullanımını kontrol eder.  
+- `kontrol_disk_kullanimi() -> float`: Disk kullanımını kontrol eder.  
+- `kontrol_kritik_durumlar() -> dict`: Kritik koşulları kontrol eder.  
+- `tetikle_acil_eylem(eylem_tipi: str, hedef_modul: str) -> None`: Acil eylemi tetikler.  
+
+**Bağlı Modüller**:  
+- sistem_doktoru, otomasyon_yoneticisi, destekci_fonksiyonlar: Veri alır/gönderir.  
+- hafiza_merkezi: Sağlık loglarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: psutil>=5.9.8  
+**Test**: CPU %90’a ulaşırsa grafik_ui durdurulur, hft_yoneticisi devam eder, olay loglanır, işlem <50ms.  
+
+**Talimat**:  
+- SistemSaglikKoruyucu sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `kontrol_cpu_kullanimi`, `kontrol_bellek_kullanimi`, `kontrol_disk_kullanimi`, ilgili metrikleri ölçmeli.  
+  - `tetikle_acil_eylem`, modül önceliklerine göre düşük öncelikli modülleri durdurmalı.  
+- Çıkış dict’lerini Redis event bus üzerinden yayınlayın, sağlık loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın, kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 45/66: regülasyon_kontrol.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 45. regülasyon_kontrol.py  
+**Dosya Yolu**: temel_islemler/regülasyon_kontrol.py  
+**Görev**: Yasal ve regülatif değişiklikleri izler (haber sitelerinden scraping), sistem ayarlarını günceller (Uyumlulukİzleyici).  
+**Sınıf**: RegülasyonKontrol  
+**Fonksiyonlar**:  
+- `cek_yasal_guncellemeler() -> dict`: Haber sitelerinden yasal değişiklikleri çeker (scraping).  
+- `analiz_guncellemeler(guncelleme_veri: dict) -> dict`: Değişiklikleri analiz eder.  
+- `guncelle_sistem_ayarlari(ayarla: dict) -> None`: Sistem ayarlarını günceller.  
+- `kontrol_uyumluluk(sistem_config: dict) -> bool`: Uyumluluğu kontrol eder.  
+
+**Bağlı Modüller**:  
+- hukuk_gunlugu, config, piyasa_rejim_analizci, otomasyon_yoneticisi: Veri alır/gönderir.  
+- hafiza_merkezi: Regülasyon loglarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: requests>=2.31.0, json>=2.0.9, python-dotenv>=1.0.0, beautifulsoup4>=4.12.0  
+**Test**: Yeni KYC regülasyonu tespit edilir, ayarlar <1s’de güncellenir, scraping kesintisi senaryosu test edilir.  
+
+**Talimat**:  
+- RegülasyonKontrol sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `cek_yasal_guncellemeler`, CoinDesk/CoinTelegraph’dan scraping ile veri çekmeli.  
+  - `analiz_guncellemeler`, değişiklikleri analiz etmeli.  
+  - `guncelle_sistem_ayarlari`, ayarları güncellemeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Regülasyon loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın, kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 46/66: rapor_uretici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 46. rapor_uretici.py  
+**Dosya Yolu**: temel_islemler/rapor_uretici.py  
+**Görev**: Kullanıcı geri bildirimlerini ve performansı analiz eder, raporlar üretir, UI optimizasyon verisi sağlar (GeriBildirimDöngüsüMotoru).  
+**Sınıf**: RaporUretici  
+**Fonksiyonlar**:  
+- `uret_performans_raporu(veri: dict) -> str`: Performans raporları üretir (JSON).  
+- `analiz_kullanici_geribildirim(geribildirim: dict) -> dict`: Geri bildirimleri analiz eder.  
+- `uret_arayuz_optimizasyon_verisi(kullanici_davranis: dict) -> dict`: UI optimizasyon verisi üretir.  
+
+**Bağlı Modüller**:  
+- kasiyer, sohbet_yuzeyi, grafik_ui, hafiza_merkezi, otomasyon_yoneticisi, karar_tartismasi, bildirim_bot, performans_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: pandas>=2.2.0, numpy>=1.26.0, transformers>=4.38.0  
+**Test**: Haftalık kâr raporu JSON formatında üretilir, UI önerileri loglanır, geri bildirim analizi <500ms.  
+
+**Talimat**:  
+- RaporUretici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `uret_performans_raporu`, kâr/zarar ve performans metriklerini JSON formatında üretmeli.  
+  - `analiz_kullanici_geribildirim`, geri bildirimleri FinBERT ile analiz etmeli.  
+  - `uret_arayuz_optimizasyon_verisi`, kullanıcı davranışlarını optimize etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Raporları hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, özetleri bildirim_bot ile gönderin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 47/66: crypto_bubbles_tarama.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 47. crypto_bubbles_tarama.py  
+**Dosya Yolu**: temel_islemler/crypto_bubbles_tarama.py  
+**Görev**: Crypto Bubbles web sitesinden scraping ile top 100/1000 coin’leri tarar, düşüşte olan projeleri ve topluluk aktivitelerini analiz eder.  
+**Sınıf**: CryptoBubblesTarama  
+**Fonksiyonlar**:  
+- `tarama_crypto_bubbles(zaman_dilimi: str, piyasa_cap: str) -> pd.DataFrame`: Crypto Bubbles verilerini tarar (scraping).  
+- `analiz_dusus_firsatlari(veri: pd.DataFrame) -> dict`: Düşüşte olan projeleri tespit eder.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, firsat_avcisi, hafiza_merkezi, likidite_analizci, duyarlilik_analizci, kaynak_guvenilirlik_izleyici: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: requests>=2.31.0, pandas>=2.2.0, beautifulsoup4>=4.12.0, selenium>=4.18.0  
+**Test**: Aylık zaman diliminde %20 düşüşte coin’ler taranır, AGIX için fırsat tespit edilir, işlem <1s.  
+
+**Talimat**:  
+- CryptoBubblesTarama sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tarama_crypto_bubbles`, Crypto Bubbles’dan scraping ile veri çekmeli.  
+  - `analiz_dusus_firsatlari`, düşüşte olan projeleri tespit etmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış DataFrame’lerini Redis event bus üzerinden yayınlayın.  
+- Tarama sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 48/66: bundle_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 48. bundle_analizci.py  
+**Dosya Yolu**: temel_islemler/bundle_analizci.py  
+**Görev**: Solana blockchain’de bundle sniping aktivitelerini ve holder dağılımlarını analiz eder (ücretsiz Solana RPC’leri ve Etherscan ile).  
+**Sınıf**: BundleAnalizci  
+**Fonksiyonlar**:  
+- `analiz_bundle_sniping(kontrat_adresi: str) -> dict`: Bundle sniping aktivitelerini analiz eder.  
+- `isaretle_riskli_bundles(bundle_gruplar: List[Dict]) -> List[Dict]`: %3’ten fazla token tutan bundle’ları işaretler.  
+- `hesapla_risk_skoru(riskli_bundles: List[Dict]) -> float`: Bundle’lara göre risk skoru hesaplar.  
+
+**Bağlı Modüller**:  
+- balina_izleyici, piyasa_veri_cekici, hafiza_merkezi, kaynak_guvenilirlik_izleyici, dex_arbitraj_tarayici, zincirler_arasi_hareket_analizci, cuzdan_kumesi_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: web3.py>=6.15.0, pandas>=2.2.0, numpy>=1.26.0  
+**Test**: %4 bundle tespit edilir, risk uyarısı üretilir, işlem <500ms.  
+
+**Talimat**:  
+- BundleAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `analiz_bundle_sniping`, Solana RPC’leri ve Etherscan ile bundle aktivitelerini analiz etmeli.  
+  - `isaretle_riskli_bundles`, %3’ten fazla token tutan grupları işaretlemeli.  
+  - `hesapla_risk_skoru`, risk skoru üretmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, risk uyarılarını bildirim_bot ile gönderin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- GDPR uyumluluğu için cüzdan verilerini anonimleştirin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 49/66: llm_sentiment_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 49. llm_sentiment_analizci.py  
+**Dosya Yolu**: temel_islemler/llm_sentiment_analizci.py  
+**Görev**: FinBERT ile haber ve sosyal medya (scraping verileri) sentiment analizi yapar, kontraryen sinyaller üretir.  
+**Sınıf**: LLMSentimentAnalizci  
+**Fonksiyonlar**:  
+- `analiz_haber_sentiment(haber_veri: pd.DataFrame, llm_model: str) -> dict`: Haberlerden sentiment skoru üretir.  
+- `uretm_kontraryen_sinyal(sentiment: dict) -> dict`: Negatif sentimentte long, pozitif sentimentte short sinyalleri üretir.  
+
+**Bağlı Modüller**:  
+- duyarlilik_analizci, piyasa_analizci, karar_tartismasi, hafiza_merkezi, kaynak_guvenilirlik_izleyici: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: transformers>=4.38.0, pandas>=2.2.0, numpy>=1.26.0  
+**Test**: Bitcoin için negatif sentiment skoru üretilir, kontraryen long sinyali doğrulanır, işlem <500ms.  
+
+**Talimat**:  
+- LLMSentimentAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `analiz_haber_sentiment`, FinBERT ile sentiment skoru üretmeli.  
+  - `uretm_kontraryen_sinyal`, negatif sentimentte long sinyalleri üretmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 50/66: derin_ogrenme_botu.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 50. derin_ogrenme_botu.py  
+**Dosya Yolu**: temel_islemler/derin_ogrenme_botu.py  
+**Görev**: DeepSeek R1 ile otomatik trading botları oluşturur, TradingView entegrasyonu sağlar.  
+**Sınıf**: DerinOgrenmeBotu  
+**Fonksiyonlar**:  
+- `olustur_derin_ogrenme_botu(strateji: dict, ai_model: str) -> None`: DeepSeek ile bot kodu üretir.  
+- `entegre_tradingview_botu(strateji: dict, webhook: str) -> None`: TradingView webhook’u entegre eder.  
+
+**Bağlı Modüller**:  
+- ogrenme_merkezi, karar_tartismasi, otomasyon_yoneticisi, bildirim_bot, strateji_geri_test: Veri alır/gönderir.  
+- hafiza_merkezi: Bot kodlarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: transformers>=4.38.0, requests>=2.31.0  
+**Test**: DeepSeek ile bot kodu üretilir, TradingView’e entegre edilir, işlem <1s.  
+
+**Talimat**:  
+- DerinOgrenmeBotu sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `olustur_derin_ogrenme_botu`, DeepSeek ile bot kodu üretmeli.  
+  - `entegre_tradingview_botu`, webhook’ları bağlamalı.  
+- Giriş verilerini islem_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Bot kodlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 51/66: dashboard_duzenleyici.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 51. dashboard_duzenleyici.py  
+**Dosya Yolu**: temel_islemler/dashboard_duzenleyici.py  
+**Görev**: Streamlit dashboard’da kolon bazlı düzen ve özelleştirilmiş emir girişi sağlar.  
+**Sınıf**: DashboardDuzenleyici  
+**Fonksiyonlar**:  
+- `duzenle_kolon_bazli_arayuz(alanlar: list) -> None`: Kolon bazlı dashboard düzeni oluşturur.  
+- `tanimla_ozel_emir_arayuzu(kullanici: str) -> None`: Kullanıcı tanımlı emir giriş arayüzü oluşturur.  
+
+**Bağlı Modüller**:  
+- grafik_ui, islem_yapici, risk_denetleyicisi, otomasyon_yoneticisi, rapor_uretici: Veri alır/gönderir.  
+- hafiza_merkezi: Dashboard ayarlarını kaydeder.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: streamlit>=1.31.0, pandas>=2.2.0  
+**Test**: Kolon bazlı dashboard mobil cihazda render edilir, kullanıcı tanımlı emir girişi uygulanır, işlem <1s.  
+
+**Talimat**:  
+- DashboardDuzenleyici sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `duzenle_kolon_bazli_arayuz`, Streamlit ile kolon bazlı düzen oluşturmalı.  
+  - `tanimla_ozel_emir_arayuzu`, kullanıcı tanımlı emir girişi sağlamalı.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Dashboard ayarlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 52/66: sesli_asistan.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 52. sesli_asistan.py  
+**Dosya Yolu**: temel_islemler/sesli_asistan.py  
+**Görev**: Sesli uyarılar ve özetler üretir (opsiyonel).  
+**Sınıf**: SesliAsistan  
+**Fonksiyonlar**:  
+- `uret_sesli_uyari(mesaj: str) -> None`: Sesli uyarı üretir.  
+- `uret_sesli_ozet(rapor: dict) -> None`: Sesli kâr özeti üretir.  
+
+**Bağlı Modüller**:  
+- bildirim_bot, hafiza_merkezi, otomasyon_yoneticisi: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: pyttsx3>=2.90  
+**Test**: Kâr özeti sesli olarak üretilir, işlem <1s.  
+
+**Talimat**:  
+- SesliAsistan sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `uret_sesli_uyari`, pyttsx3 ile sesli uyarı üretmeli.  
+  - `uret_sesli_ozet`, kâr özetini seslendirmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Sesli özet loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+# TiryakiPiyasaFatihi V1.6 - Modül Prompt’ları (53-66)
+
+## Prompt 53/66: islem_yapilari.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 53. islem_yapilari.py  
+**Dosya Yolu**: yapilar/islem_yapilari.py  
+**Görev**: İşlem ve tartışma veri yapılarını tanımlar, JSON şeması ile standartlaştırılır.  
+**Sınıf**: IslemYapilari  
+**Fonksiyonlar**:  
+- `tanimla_islem_yapisi() -> dataclass`: İşlem yapısını tanımlar (fiyat, miktar, yön).  
+- `tanimla_tartisma_yapisi() -> dataclass`: Tartışma yapısını tanımlar (model, puan).  
+
+**Bağlı Modüller**:  
+- islem_yapici, karar_tartismasi, hafiza_merkezi: Veri yapıları sağlar.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: dataclasses>=0.8, jsonschema>=4.21.0  
+**Test**: İşlem yapısı tanımlanır, JSON formatında kaydedilir, <10ms, şema doğrulaması geçer.  
+
+**Talimat**:  
+- IslemYapilari sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tanimla_islem_yapisi`, işlem yapısını (fiyat, miktar, yön, timestamp) dataclass ile tanımlamalı.  
+  - `tanimla_tartisma_yapisi`, tartışma yapısını (model, öneri, puan) dataclass ile tanımlamalı.  
+- Veri yapılarını jsonschema ile doğrulayın, JSON formatında hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 54/66: ayar_yapilari.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 54. ayar_yapilari.py  
+**Dosya Yolu**: yapilar/ayar_yapilari.py  
+**Görev**: Risk ve sistem ayar yapılarını tanımlar, JSON şeması ile standartlaştırılır.  
+**Sınıf**: AyarYapilari  
+**Fonksiyonlar**:  
+- `tanimla_risk_parametreleri() -> dataclass`: Risk parametrelerini tanımlar (drawdown limiti, stop-loss oranı).  
+- `tanimla_sistem_ayarlari() -> dataclass`: Sistem yapılandırmasını tanımlar (gecikme bütçesi, modül öncelikleri).  
+
+**Bağlı Modüller**:  
+- risk_denetleyicisi, sistem_doktoru, config: Veri yapıları sağlar.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: dataclasses>=0.8, jsonschema>=4.21.0  
+**Test**: Risk parametreleri tanımlanır, config’e yazılır, <10ms, şema doğrulaması geçer.  
+
+**Talimat**:  
+- AyarYapilari sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tanimla_risk_parametreleri`, risk parametrelerini (drawdown limiti, stop-loss oranı) dataclass ile tanımlamalı.  
+  - `tanimla_sistem_ayarlari`, sistem ayarlarını (gecikme bütçesi, modül öncelikleri) dataclass ile tanımlamalı.  
+- Veri yapılarını jsonschema ile doğrulayın, JSON formatında hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 55/66: veri_yapilari.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 55. veri_yapilari.py  
+**Dosya Yolu**: yapilar/veri_yapilari.py  
+**Görev**: Piyasa, haber, topluluk ve cüzdan veri yapılarını tanımlar, JSON şeması ile standartlaştırılır.  
+**Sınıf**: VeriYapilari  
+**Fonksiyonlar**:  
+- `tanimla_veri_yapisi() -> dataclass`: Veri yapısını tanımlar (MarketData, NewsData, CommunityData, WalletData).  
+- `dogrula_veri(veri: Any) -> bool`: Veriyi şemaya göre doğrular.  
+
+**Bağlı Modüller**:  
+- veri_duzenleyici, piyasa_analizci, piyasa_veri_cekici, duyarlilik_analizci, zincirler_arasi_hareket_analizci, cuzdan_kumesi_analizci: Veri yapıları sağlar.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: dataclasses>=0.8, jsonschema>=4.21.0  
+**Test**: Piyasa verisi yapısı tanımlanır, doğrulama geçer, <10ms, şema uyumsuzluğu senaryosu test edilir.  
+
+**Talimat**:  
+- VeriYapilari sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tanimla_veri_yapisi`, MarketData (fiyat, hacim), NewsData (başlık, tarih), CommunityData (skor, aktivite), WalletData (adres, hareket) yapılarını dataclass ile tanımlamalı.  
+  - `dogrula_veri`, veriyi jsonschema ile doğrulamalı.  
+- Veri yapılarını JSON formatında hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 56/66: birim_testleri.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 56. birim_testleri.py  
+**Dosya Yolu**: denemeler/birim_testleri.py  
+**Görev**: Birim testleri çalıştırır, hata enjeksiyonu ile senaryolar test edilir.  
+**Sınıf**: BirimTestleri  
+**Fonksiyonlar**:  
+- `test_modul(modul: str) -> bool`: Modül fonksiyonlarını izole test eder.  
+- `raporla_sonuclar(sonuclar: dict) -> str`: Test sonuçlarını JSON formatında raporlar.  
+
+**Bağlı Modüller**:  
+- Tüm temel modüller, destekci_fonksiyonlar: Test edilir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: unittest>=3.9  
+**Test**: islem_yapici modülü test edilir, %100 geçer, sonuçlar loglanır, API kesintisi ve ağ gecikmesi senaryoları test edilir.  
+
+**Talimat**:  
+- BirimTestleri sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `test_modul`, modül fonksiyonlarını izole test etmeli, hata enjeksiyonu (API kesintisi, ağ gecikmesi) içermeli.  
+  - `raporla_sonuclar`, test sonuçlarını JSON formatında döndürmeli.  
+- Test sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 57/66: entegrasyon_testleri.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 57. entegrasyon_testleri.py  
+**Dosya Yolu**: denemeler/entegrasyon_testleri.py  
+**Görev**: Entegrasyon testleri çalıştırır, modüller arası veri akışını test eder.  
+**Sınıf**: EntegrasyonTestleri  
+**Fonksiyonlar**:  
+- `test_entegrasyon(moduller: list) -> bool`: Modüller arası veri akışını test eder.  
+- `raporla_sonuclar(sonuclar: dict) -> str`: Test sonuçlarını JSON formatında raporlar.  
+
+**Bağlı Modüller**:  
+- Tüm temel modüller, destekci_fonksiyonlar: Test edilir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: unittest>=3.9  
+**Test**: Veri çekme -> analiz -> işlem akışı test edilir, %95 geçer, sonuçlar loglanır, hata enjeksiyonu ile kesinti senaryoları test edilir.  
+
+**Talimat**:  
+- EntegrasyonTestleri sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `test_entegrasyon`, modüller arası veri akışını test etmeli, hata enjeksiyonu (API kesintisi, ağ gecikmesi) içermeli.  
+  - `raporla_sonuclar`, test sonuçlarını JSON formatında döndürmeli.  
+- Test sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 58/66: sistem_testleri.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 58. sistem_testleri.py  
+**Dosya Yolu**: denemeler/sistem_testleri.py  
+**Görev**: Sistem testleri çalıştırır, uçtan uca akışı ve stres senaryolarını test eder.  
+**Sınıf**: SistemTestleri  
+**Fonksiyonlar**:  
+- `test_sistem() -> bool`: Uçtan uca sistem testi yapar.  
+- `raporla_sonuclar(sonuclar: dict) -> str`: Test sonuçlarını JSON formatında raporlar.  
+
+**Bağlı Modüller**:  
+- Tüm modüller, destekci_fonksiyonlar, baslat: Test edilir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: unittest>=3.9  
+**Test**: Uçtan uca sistem testi yapılır, %90 geçer, sonuçlar loglanır, 1000 coin çifti tarama senaryosunda CPU/bellek kullanımı ölçülür.  
+
+**Talimat**:  
+- SistemTestleri sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `test_sistem`, uçtan uca sistem akışını test etmeli, stres senaryoları (1000 coin çifti tarama) içermeli.  
+  - `raporla_sonuclar`, test sonuçlarını JSON formatında döndürmeli.  
+- Test sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 59/66: baslat.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 59. baslat.py  
+**Dosya Yolu**: baslat.py  
+**Görev**: Sistemi başlatır, güncellemeleri kontrol eder, yapılandırmaları yükler.  
+**Sınıf**: Baslat  
+**Fonksiyonlar**:  
+- `baslat_sistem() -> None`: Sistemi başlatır.  
+- `yukle_ayarlar() -> dict`: Yapılandırmaları yükler.  
+
+**Bağlı Modüller**:  
+- otomasyon_yoneticisi, guncelleyici, config, kurulum: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: configparser>=3.9, python-dotenv>=1.0.0  
+**Test**: Sistem 10 saniyede başlatılır, config yüklenir, loglanır.  
+
+**Talimat**:  
+- Baslat sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `baslat_sistem`, otomasyon_yoneticisi’ni çağırarak sistemi başlatmalı.  
+  - `yukle_ayarlar`, .env ve config.py’den ayarları yüklemeli.  
+- Başlatma loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu), kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 60/66: kurulum.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 60. kurulum.py  
+**Dosya Yolu**: kurulum.py  
+**Görev**: Bağımlılıkları yükler, Jetson AGX Orin için ortamı hazırlar, ARM mimarisi için hata yönetimi içerir.  
+**Sınıf**: Kurulum  
+**Fonksiyonlar**:  
+- `yukle_bagimliliklar() -> None`: Bağımlılıkları yükler.  
+- `hazirla_ortam() -> None`: Ortamı hazırlar (CUDA, Python 3.9).  
+
+**Bağlı Modüller**:  
+- Bağımsız çalışır, baslat tarafından çağrılabilir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: subprocess>=3.9  
+**Test**: requirements.txt yüklenir, ortam 5 dakikada hazırlanır, derleme hatası senaryosu test edilir.  
+
+**Talimat**:  
+- Kurulum sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `yukle_bagimliliklar`, pip ile requirements.txt’yi yüklemeli, ARM için fallback içerir.  
+  - `hazirla_ortam`, Jetson için CUDA 11.4 ve Python 3.9 ortamını hazırlamalı.  
+- Kurulum loglarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu), kullanıcıya bildirim_bot ile hata özeti gönderin.  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 61/66: piyasa_rejim_tahmincisi.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 61. piyasa_rejim_tahmincisi.py  
+**Dosya Yolu**: temel_islemler/piyasa_rejim_tahmincisi.py  
+**Görev**: Piyasa rejimini (trend, range, choppy) proaktif olarak tahmin eder, stratejileri otomatik seçer.  
+**Sınıf**: PiyasaRejimTahmincisi  
+**Fonksiyonlar**:  
+- `tahmin_rejim(veri: pd.DataFrame) -> dict`: LSTM/Transformer ile trend/range tahmini yapar.  
+- `sec_strateji(rejim: str) -> dict`: Rejime göre strateji önerir (örn. breakout, mean-reversion).  
+
+**Bağlı Modüller**:  
+- piyasa_analizci, karar_tartismasi, piyasa_rejim_analizci, teknik_analiz_motoru, volatilite_izleyici, hafiza_merkezi, bildirim_bot: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scikit-learn>=1.4.0, torch>=2.2.0  
+**Test**: BTC/USDT için 1 saatlik grafikte trend tahmini yapılır, doğruluk >%75, işlem <100ms.  
+
+**Talimat**:  
+- PiyasaRejimTahmincisi sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tahmin_rejim`, LSTM/Transformer ile piyasa rejimini tahmin etmeli.  
+  - `sec_strateji`, rejime göre uygun stratejiyi seçmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Tahmin sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, strateji seçimini bildirim_bot ile kullanıcıya bildir.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 62/66: zincirler_arasi_hareket_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 62. zincirler_arasi_hareket_analizci.py  
+**Dosya Yolu**: temel_islemler/zincirler_arasi_hareket_analizci.py  
+**Görev**: ETH, SOL, ARB gibi zincirler arasında cüzdan hareketlerini izler, arbitraj ve balina davranışlarını tahmin eder (Etherscan ve ücretsiz Solana RPC’leri ile).  
+**Sınıf**: ZincirlerArasiHareketAnalizci  
+**Fonksiyonlar**:  
+- `izle_cuzdan_hareketleri(zincirler: list) -> pd.DataFrame`: ETH/SOL/ARB cüzdan hareketlerini çeker.  
+- `tahmin_arbitraj_davranisi(cuzdan_veri: pd.DataFrame) -> dict`: Arbitraj olasılığını hesaplar.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, balina_izleyici, firsat_avcisi, dex_arbitraj_tarayici, bundle_analizci, hafiza_merkezi, kaynak_guvenilirlik_izleyici, cuzdan_kumesi_analizci: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: web3.py>=6.15.0, pandas>=2.2.0, numpy>=1.26.0, scikit-learn>=1.4.0  
+**Test**: Arbitrum’da 1M USDT hareketi tespit edilir, arbitraj fırsatı %5+ kârla doğrulanır, işlem <500ms.  
+
+**Talimat**:  
+- ZincirlerArasiHareketAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `izle_cuzdan_hareketleri`, Etherscan ve Solana RPC’lerden cüzdan hareketlerini çekmeli.  
+  - `tahmin_arbitraj_davranisi`, hareketlerden arbitraj olasılığını hesaplamalı.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, GDPR uyumluluğu için cüzdan verilerini anonimleştirin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 63/66: tokenomik_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 63. tokenomik_analizci.py  
+**Dosya Yolu**: temel_islemler/tokenomik_analizci.py  
+**Görev**: Yeni token’ların tokenomik yapısını (dağılım, vesting, unlock planı) analiz eder, dolandırıcılık riskini değerlendirir (Etherscan ile).  
+**Sınıf**: TokenomikAnalizci  
+**Fonksiyonlar**:  
+- `analiz_tokenomik(kontrat_adresi: str) -> dict`: Token dağılımı, vesting ve unlock planını analiz eder.  
+- `hesapla_dolandiricilik_riski(token_veri: dict) -> float`: Dolandırıcılık olasılığını skorlar.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, firsat_avcisi, dex_arbitraj_tarayici, kaynak_guvenilirlik_izleyici, bundle_analizci, hafiza_merkezi, bildirim_bot: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: web3.py>=6.15.0, pandas>=2.2.0, numpy>=1.26.0, scikit-learn>=1.4.0  
+**Test**: Yeni bir token’ın rug pull riski %80+ olarak işaretlenir, analiz <500ms.  
+
+**Talimat**:  
+- TokenomikAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `analiz_tokenomik`, Etherscan’dan token dağılımı, vesting ve unlock planını çekmeli.  
+  - `hesapla_dolandiricilik_riski`, token verileriyle rug pull riskini hesaplamalı.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, rug pull uyarılarını bildirim_bot ile gönderin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 64/66: volatilite_olasilik_modeli.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 64. volatilite_olasilik_modeli.py  
+**Dosya Yolu**: temel_islemler/volatilite_olasilik_modeli.py  
+**Görev**: Kısa vadeli volatilite spike’larını tahmin eder, scalping stratejilerini optimize eder.  
+**Sınıf**: VolatiliteOlasilikModeli  
+**Fonksiyonlar**:  
+- `tahmin_volatilite_olasilik(veri: pd.DataFrame, zaman_dilimi: str) -> dict`: Gaussian Mixture Model ile volatilite spike olasılığını hesaplar.  
+- `optimize_scalping_stratejisi(olasilik: dict) -> dict`: Volatilite tahminine göre scalping stratejisi önerir.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, volatilite_izleyici, piyasa_analizci, risk_denetleyicisi, keskin_nisanci, firsat_avcisi, hafiza_merkezi, bildirim_bot: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, scikit-learn>=1.4.0, torch>=2.2.0  
+**Test**: BTC/USDT için 1 saatlik volatilite spike tahmini, doğruluk >%80, işlem <100ms.  
+
+**Talimat**:  
+- VolatiliteOlasilikModeli sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `tahmin_volatilite_olasilik`, Gaussian Mixture Model ile volatilite spike olasılığını hesaplamalı.  
+  - `optimize_scalping_stratejisi`, volatilite tahminine göre scalping stratejisi önermeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Tahmin sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, scalping önerilerini bildirim_bot ile gönderin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 65/66: makro_korelasyon_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 65. makro_korelasyon_analizci.py  
+**Dosya Yolu**: temel_islemler/makro_korelasyon_analizci.py  
+**Görev**: BTC ile SP500, DXY, VIX, altın gibi makro varlıkların korelasyonunu gerçek zamanlı izler (TradingView scraping veya yerel CSV’ler), kırılmalarda agresif sinyaller üretir.  
+**Sınıf**: MakroKorelasyonAnalizci  
+**Fonksiyonlar**:  
+- `analiz_korelasyon(veri: pd.DataFrame) -> dict`: Pearson ve cross-correlation ile korelasyon hesaplar.  
+- `tespit_korelasyon_kirilmasi(korelasyon: dict) -> dict`: Korelasyon kırılmalarını tespit eder, sinyal üretir.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, duyarlilik_analizci, karar_tartismasi, hafiza_merkezi, grafik_ui, bildirim_bot: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: numpy>=1.26.0, pandas>=2.2.0, beautifulsoup4>=4.12.0  
+**Test**: BTC/SP500 korelasyon kırılması tespit edilir, agresif işlem sinyali üretilir, işlem <500ms.  
+
+**Talimat**:  
+- MakroKorelasyonAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `analiz_korelasyon`, TradingView scraping veya yerel CSV’lerden korelasyon hesaplamalı.  
+  - `tespit_korelasyon_kirilmasi`, korelasyon kırılmalarını tespit edip sinyal üretmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, sinyalleri bildirim_bot ile gönderin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
+
+---
+
+## Prompt 66/66: cuzdan_kumesi_analizci.py
+**Manifesto Bölümü**: Modüller ve Sınıflar - 66. cuzdan_kumesi_analizci.py  
+**Dosya Yolu**: temel_islemler/cuzdan_kumesi_analizci.py  
+**Görev**: Benzer davranış gösteren cüzdanları (swing whale’lar, pump hunter’lar) kümeler, insider ve manipülatör sinyalleri üretir (Etherscan ve yerel veritabanı ile).  
+**Sınıf**: CuzdanKumesiAnalizci  
+**Fonksiyonlar**:  
+- `kumele_cuzdan_davranislari(veri: pd.DataFrame) -> dict`: PCA/Clustering ile cüzdan davranışlarını kümeler.  
+- `uret_insider_sinyali(kume_veri: dict) -> dict`: Insider veya manipülatör sinyalleri üretir.  
+
+**Bağlı Modüller**:  
+- piyasa_veri_cekici, balina_izleyici, zincirler_arasi_hareket_analizci, dex_arbitraj_tarayici, bundle_analizci, hafiza_merkezi, firsat_avcisi: Veri alır/gönderir.  
+- otomasyon_yoneticisi: Süreci koordine eder (Redis event bus).  
+
+**Kütüphaneler**: web3.py>=6.15.0, pandas>=2.2.0, numpy>=1.26.0, scikit-learn>=1.4.0  
+**Test**: Cüzdan davranış eşleşmesi %80+ doğrulukla tespit edilir, işlem <500ms.  
+
+**Talimat**:  
+- CuzdanKumesiAnalizci sınıfını tanımlayın.  
+- Fonksiyonları manifesto’daki görev tanımına uygun implemente edin:  
+  - `kumele_cuzdan_davranislari`, PCA ve k-means ile cüzdan davranışlarını kümelermeli.  
+  - `uret_insider_sinyali`, insider veya manipülatör sinyalleri üretmeli.  
+- Giriş verilerini veri_yapilari JSON şemasına göre doğrulayın, çıkış dict’lerini Redis event bus üzerinden yayınlayın.  
+- Analiz sonuçlarını hafiza_merkezi.kaydet_veri ile sıkıştırarak kaydedin, insider sinyallerini bildirim_bot ile gönderin, GDPR uyumluluğu için cüzdan verilerini anonimleştirin.  
+- Hataları yakalayın, destekci_fonksiyonlar.logla_olay ile JSON formatında loglayın (timestamp, modül adı, hata kodu).  
+- PEP 8, type hints ve docstring kullanın.  
+- Manifestoda belirtilmeyen hiçbir özellik eklemeyin.
